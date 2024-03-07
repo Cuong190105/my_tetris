@@ -2,6 +2,8 @@
 #include <SDL_image.h>
 #include <iostream>
 #include <vector>
+#include <queue>
+#include <cstdlib>
 
 using namespace std;
 
@@ -18,10 +20,106 @@ class Tile {
     public:
 };
 
+class Tetrimino {
+    private:
+        //A 4x4 matrix which stores the state of each tile of 
+        //the tetrimino (a playing piece that falls from the top of the board).
+        vector<vector<int>> state;
+
+        //Store type of tetrimino (I, L, J, etc)
+        int Ttype;
+
+        //Store bottom left corner's current position of
+        //tetrimino container (the 4x4 matrix) on the board
+        int currentCol, currentRow;
+    public:
+        Tetrimino(int type)
+        {
+            Ttype = type;
+            state = vector<vector<int>>( 4, vector<int>(4, 0) );
+            switch ( type )
+            {
+                // I piece
+                case 1:
+                    state[1][0] = type;
+                    state[1][1] = type;
+                    state[1][2] = type;
+                    state[1][3] = type;
+                    break;
+
+                // J piece
+                case 2:
+                    state[2][0] = type;
+                    state[1][0] = type;
+                    state[1][1] = type;
+                    state[1][2] = type;
+                    break;
+
+                // L piece
+                case 3:
+                    state[2][2] = type;
+                    state[1][0] = type;
+                    state[1][1] = type;
+                    state[1][2] = type;
+                    break;
+
+                // O piece
+                case 4:
+                    state[2][1] = type;
+                    state[2][2] = type;
+                    state[1][1] = type;
+                    state[1][2] = type;
+                    break;
+
+                // S piece
+                case 5:
+                    state[1][0] = type;
+                    state[1][1] = type;
+                    state[2][1] = type;
+                    state[2][2] = type;
+                    break;
+
+                // Z piece
+                case 6:
+                    state[2][0] = type;
+                    state[2][1] = type;
+                    state[1][1] = type;
+                    state[1][2] = type;
+                    break;
+
+                // T piece
+                case 7:
+                    state[1][0] = type;
+                    state[1][1] = type;
+                    state[1][2] = type;
+                    state[2][1] = type;
+                    break;
+            }
+        }
+
+        ~Tetrimino() {}
+
+        void rotatePiece( bool rotateClockwise )
+        {
+            if ( Ttype == 1) 
+            {
+
+            }
+        }
+};
+
+Tetrimino generateNewTetrimino()
+{
+
+}
+
 class PlayBoard {
     private:
         const int WIDTH_BY_TILE = 10;
-        const int HEIGHT_BY_TILE = 20;
+        const int HEIGHT_BY_TILE = 23;
+
+        //3 rows at the top of the board are hidden, at which new tetrimino is spawned.
+        const int HIDDEN_ROW = 3;
         
         //Width and height of play board when displayed on screen
         int w, h;
@@ -34,7 +132,7 @@ class PlayBoard {
         {
             boardStatus = vector<vector<int>>( HEIGHT_BY_TILE, vector<int>( WIDTH_BY_TILE, 0 ) );
             w = TILE_WIDTH * WIDTH_BY_TILE;
-            h = TILE_WIDTH * HEIGHT_BY_TILE;
+            h = TILE_WIDTH * (HEIGHT_BY_TILE - HIDDEN_ROW);
         }
 
         //Destructor
@@ -78,6 +176,9 @@ class PlayBoard {
                 //Bottom border
                 SDL_RenderDrawLine( renderer, board.x, board.y + h + i, board.x + w, board.y  + h  + i);
             }
+
+            // Draw pieces on the board;
+            // for ( int row = 0; row < )
         }
 };
 
@@ -141,13 +242,17 @@ int main(int argv, char **args) {
     {
         //Main loop flag
         bool quit = false;
-
+        srand(time(NULL));
         //Event handler
         SDL_Event e;
 
+        //Game loop
         while ( !quit )
         {
+
+            //Initialize game & piece bag;
             PlayBoard board;
+            queue<Tetrimino> TetriminoQueue;
 
             //Handle events
             while ( SDL_PollEvent(&e) != 0 ) 
@@ -157,6 +262,10 @@ int main(int argv, char **args) {
                 {
                     quit = true;
                 }
+                // while ( TetriminoQueue.size() < 5 ) {
+                //     TetriminoQueue.push( generateNewTetrimino() );
+                // }
+
 
                 SDL_SetRenderDrawColor( renderer, 0x00, 0x00, 0x00, 0xFF );
                 SDL_RenderClear( renderer );
