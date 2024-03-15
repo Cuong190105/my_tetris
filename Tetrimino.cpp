@@ -2,7 +2,7 @@
 #include "logic.hpp"
 
 //7 types of tetrimino block
-enum Ttype { I_PIECE, J_PIECE, L_PIECE, O_PIECE, S_PIECE, Z_PIECE, T_PIECE };
+enum Ttype { I_PIECE = 1, J_PIECE, L_PIECE, O_PIECE, S_PIECE, Z_PIECE, T_PIECE };
 
 Tetrimino::Tetrimino(int _type)
 {
@@ -72,7 +72,7 @@ Tetrimino::Tetrimino(int _type)
     }
 }
 
-// Tetrimino::~Tetrimino() {}
+Tetrimino::~Tetrimino() {}
 
 int Tetrimino::getContainerSize()
 {
@@ -133,6 +133,16 @@ int Tetrimino::getGhostRow( PlayBoard board )
     return -1;
 }
 
+bool Tetrimino::movePieceHorizontally( PlayBoard board, bool right )
+{
+    if ( !checkCollision( board, *this, 0, right * 2 - 1 ) )
+    {
+        currentCol += right * 2 - 1;
+        return true;
+    }
+    return false;
+}
+
 void Tetrimino::dropPiece( PlayBoard board, bool isHardDrop )
 {
     if ( isHardDrop )
@@ -172,13 +182,14 @@ void Tetrimino::rotatePiece( PlayBoard board, bool rotateClockwise )
         }
     }
 
-    /*
-    wallKickAdjustments store data using for adjusting the position of the rotated piece
-    if it collides with other pieces or the board. A piece fails to rotate if all 5 adjusted positions
-    are invalid.
+    /**
+     * Stores data using for adjusting the position of the rotated piece
+     * if it collides with other pieces or the board. A piece fails to rotate if all 5 adjusted positions
+     * are invalid.
 
-    For counterclockwise rotation from state i+1 to i, take the wall kick dataset of
-    rotation from state i to i+1 then multiply all the coefficients with -1.
+     * For counterclockwise rotation from state i+1 to i, take the wall kick dataset of
+     * rotation from state i to i+1 then multiply all the coefficients with -1.
+     * \return
     */
     vector<vector<int>> wallKickAdjustments;
     const int ADJUSTMENTS_COUNT = 5;

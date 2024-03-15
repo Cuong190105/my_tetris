@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include "logic.hpp"
 #include "rendering.hpp"
+#include <fstream>
 using namespace std;
 
 int main(int argv, char **args) {
@@ -12,6 +13,7 @@ int main(int argv, char **args) {
     }
     else
     {
+        loadMedia();
         //Main loop flag
         bool quit = false;
         srand(time(NULL));
@@ -21,11 +23,18 @@ int main(int argv, char **args) {
         //Game loop
         while ( !quit )
         {
-
+            ifstream file("data_test.txt");
+            int data;
             //Initialize game & piece bag;
             PlayBoard board;
             queue<Tetrimino> TetriminoQueue;
-
+            for (int i = 0; i < 20; i++) {
+                for (int j = 0; j < 10; j++) {
+                    file >> data;
+                    board.modifyCell(i, j, data);
+                }
+            }
+            file.close();
             //Handle events
             while ( SDL_PollEvent(&e) != 0 ) 
             {

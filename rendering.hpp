@@ -1,16 +1,26 @@
 #ifndef rendering_hpp
 #define rendering_hpp
 #include <SDL.h>
-// #include <SDL_image.h>
 #include "Tetrimino.hpp"
-
-extern SDL_Renderer *renderer;
+#include "Texture.hpp"
 
 //Render the playfield
 void renderBoard( PlayBoard pb );
 
+//Render the currently playing tetrimino on the field
+void renderCurrentTetrimino( Tetrimino tetr );
+
+//Render the tetrimino queue
+void renderTetriminoQueue( vector<Tetrimino> Tqueue );
+
+//Render the held tetrimino
+void renderHeldTetrimino( Tetrimino tetr );
+
 //Initialize SDL system, game window and renderer
 bool init();
+
+//Loads media
+void loadMedia();
 
 //Terminate SDL system and close window
 void close();

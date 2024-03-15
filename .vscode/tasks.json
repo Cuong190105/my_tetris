@@ -2,17 +2,11 @@
     "tasks": [
         {
             "type": "cppbuild",
-            "label": "C/C++: g++.exe build active file",
-            "command": "c:\\Program Files\\CodeBlocks\\MinGW\\bin\\g++.exe",
+            "label": "C/C++: g++.exe build project",
+            "command": "make",
             "args": [
-                "-fdiagnostics-color=always",
-                "-g",
-                "${file}",
-                "-o",
-                "${fileDirname}\\${fileBasenameNoExtension}.exe"
             ],
             "options": {
-                "cwd": "c:\\Program Files\\CodeBlocks\\MinGW\\bin"
             },
             "problemMatcher": [
                 "$gcc"

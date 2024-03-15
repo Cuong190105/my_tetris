@@ -2,9 +2,10 @@
 #define PlayBoard_hpp
 #include <vector>
 using namespace std;
+
 const int WIDTH_BY_TILE = 10;
 const int HEIGHT_BY_TILE = 23;
-const int TILE_WIDTH = 30;
+const int TILE_WIDTH = 45;
 
 //3 rows at the top of the board are hidden, at which new tetrimino is spawned.
 const int HIDDEN_ROW = 3;
@@ -22,7 +23,7 @@ class PlayBoard {
         PlayBoard();
 
         //Destructor
-        // ~PlayBoard();
+        ~PlayBoard();
 
         //Get the width of the board
         int getWidth();
@@ -30,15 +31,20 @@ class PlayBoard {
         //Get the height of the board
         int getHeight();
 
-        //Get the state of a cell given its coordinate
-        //Return -1 if the corresponding cell is outside the board
+        /**
+         * Get the state of a cell given its coordinate
+         * \return State of the corresponding cell. -1 if the coordinate is outside the board
+         */
         int getCellState( int row, int col );
 
         //Change the value of a cell
         void modifyCell( int row, int col, int val );
         
-        //Clear all completed rows from row lowerRow to row upperRow
-        void clearCompletedRow( int upperRow, int lowerRow );
+        /**
+         * Clear all completed rows from row lowerRow to row upperRow
+         * \return number of cleared rows
+         */
+        int clearCompletedRow( int upperRow, int lowerRow );
 };
 
 #endif
