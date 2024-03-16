@@ -62,9 +62,24 @@ void renderBoard( PlayBoard pb )
     }
 }
 
-void renderCurrentTetrimino( Tetrimino tetr )
+void renderCurrentTetrimino( PlayBoard pb, Tetrimino tetr )
 {
+    const int BOTTOM_LEFT_X = ( WINDOW_WIDTH - pb.getWidth() ) / 2;
+    const int BOTTOM_LEFT_Y = ( WINDOW_HEIGHT + pb.getHeight() ) / 2;
 
+    for ( int row = 0; row < tetr.getContainerSize(); row++ )
+    {
+        for ( int col = 0; col < tetr.getContainerSize(); col++ )
+        {
+            if ( tetr.getCellState( row, col ) > 0 )
+            {
+                tileSpriteSheet.render( BOTTOM_LEFT_X + ( tetr.getCol() + col ) * TILE_WIDTH,
+                                        BOTTOM_LEFT_Y - ( tetr.getRow() + row + 1) * TILE_WIDTH,
+                                        TILE_WIDTH, TILE_WIDTH,
+                                        &tileSpriteClips[ tetr.getCellState( row, col ) ]);
+            }
+        }
+    }
 }
 
 void renderTetriminoQueue( vector<Tetrimino> Tqueue )

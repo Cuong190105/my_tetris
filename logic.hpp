@@ -1,10 +1,12 @@
 #ifndef logic_hpp
 #define logic_hpp
 #include "Tetrimino.hpp"
+#include <SDL.h>
 using namespace std;
 
 void updateBoard( PlayBoard pb, Tetrimino tetr );
 
-bool checkCollision( PlayBoard pb, Tetrimino tetr, int rowAdjustment = 0, int colAdjustment = 0 );
+Tetrimino generateTetrimino();
 
+void handlingKeyPress( SDL_Event &e, const PlayBoard &pb, Tetrimino &tetr );
 #endif

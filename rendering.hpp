@@ -8,7 +8,7 @@
 void renderBoard( PlayBoard pb );
 
 //Render the currently playing tetrimino on the field
-void renderCurrentTetrimino( Tetrimino tetr );
+void renderCurrentTetrimino( PlayBoard pb, Tetrimino tetr );
 
 //Render the tetrimino queue
 void renderTetriminoQueue( vector<Tetrimino> Tqueue );

@@ -4,6 +4,8 @@
 #include "PlayBoard.hpp"
 
 using namespace std;
+const int START_ROW = 20;
+const int START_COL = 3;
 
 class Tetrimino {
     private:
@@ -32,7 +34,7 @@ class Tetrimino {
 
     public:
         //Tetrimino constructor
-        Tetrimino(int _type);
+        Tetrimino( int _type, int row = START_ROW, int col = START_COL );
 
         //Tetrimino destructor
         ~Tetrimino();
@@ -48,7 +50,7 @@ class Tetrimino {
 
         //Return currentRow
         int getRow();
-
+        
         //Modify the content of a state's cell
         void updateState( int col, int row, int value );
 
@@ -68,10 +70,17 @@ class Tetrimino {
         int getGhostRow( PlayBoard board );
 
         /**
+         * Checks if this tetrimino collides with any other element (border, another active cell) of the playfield
+         * \param board The playfield this tetrimino is currently in.
+         * \param rowAdjustment \param colAdjustment Adjusting tetrimino's position for specific purposes (checking valid movement or rotation, etc.)
+        */
+        bool checkCollision( PlayBoard board, int rowAdjustment = 0, int colAdjustment = 0 );
+
+        /**
          * Control horizontal movement of the piece.
          * \return false if the movement is invalid, else return true.
          */
-        bool movePieceHorizontally( PlayBoard board, bool right );
+        void movePieceHorizontally( PlayBoard board, bool right );
 
         /**
          * Control dropping movement of the piece

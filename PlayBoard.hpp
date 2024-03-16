@@ -5,7 +5,7 @@ using namespace std;
 
 const int WIDTH_BY_TILE = 10;
 const int HEIGHT_BY_TILE = 23;
-const int TILE_WIDTH = 45;
+const int TILE_WIDTH = 30;
 
 //3 rows at the top of the board are hidden, at which new tetrimino is spawned.
 const int HIDDEN_ROW = 3;

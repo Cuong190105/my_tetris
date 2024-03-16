@@ -1,6 +1,8 @@
 #include <algorithm>
+#include <iostream>
+#include <SDL.h>
+#include <cstdlib>
 #include "logic.hpp"
-#include "Tetrimino.hpp"
 using namespace std;
 
 void updateBoard( PlayBoard pb, Tetrimino tetr )
@@ -19,14 +21,39 @@ void updateBoard( PlayBoard pb, Tetrimino tetr )
     pb.clearCompletedRow( tetr.getRow() + tetr.getContainerSize() - 1, tetr.getRow() );
 }
 
-bool checkCollision( PlayBoard pb, Tetrimino tetr, int rowAdjustment, int colAdjustment ) {
-    for ( int i = 0; i < tetr.getContainerSize(); i++ )
+Tetrimino generateTetrimino()
+{
+    int selection = rand() % 7 + 1;
+    Tetrimino newTetr(selection);
+    return newTetr;
+}
+
+void handlingKeyPress( SDL_Event &e, const PlayBoard &pb, Tetrimino &tetr )
+{
+    if ( e.type == SDL_KEYDOWN && e.key.repeat == 0 )
     {
-        for ( int j = 0; j < tetr.getContainerSize(); j++ )
+        // cout << SDL_GetKeyName(e.key.keysym.sym) << endl;
+        switch( e.key.keysym.sym )
         {
-            if ( tetr.getCellState( i, j )!= 0 && pb.getCellState( tetr.getRow() + rowAdjustment + i, tetr.getCol() + colAdjustment + i ) != 0)
-                return true;
+            //Drops
+            case SDLK_DOWN:
+            case SDLK_SPACE:
+                tetr.dropPiece( pb, e.key.keysym.sym == SDLK_SPACE );
+                break;
+            
+            //Moves left or right
+            case SDLK_LEFT:
+            case SDLK_RIGHT:
+                tetr.movePieceHorizontally( pb, e.key.keysym.sym == SDLK_RIGHT );
+                break;
+            
+            //Rotates clockwise
+            case SDLK_UP:
+            case SDLK_x:
+            //Rotates counterclockwise
+            case SDLK_z:
+                tetr.rotatePiece( pb, e.key.keysym.sym != SDLK_z );
+                break;
         }
     }
-    return false;
 }

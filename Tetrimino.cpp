@@ -1,25 +1,33 @@
 #include "Tetrimino.hpp"
-#include "logic.hpp"
-
+#include <iostream>
+using namespace std;
 //7 types of tetrimino block
 enum Ttype { I_PIECE = 1, J_PIECE, L_PIECE, O_PIECE, S_PIECE, Z_PIECE, T_PIECE };
 
-Tetrimino::Tetrimino(int _type)
+Tetrimino::Tetrimino( int _type, int row, int col )
 {
     type = _type;
     currentRotationState = 0;
-    if (_type == 0 || _type == 3)
+    currentCol = col;
+    currentRow = row;
+    if (_type == 1 || _type == 4)
+    {
         state = vector<vector<int>>( 4, vector<int>(4, 0) );
+        containerSize = 4;
+    }
     else
+    {
         state = vector<vector<int>>( 3, vector<int>( 3, 0 ) );
+        containerSize = 3;
+    }
     switch ( _type )
     {
         // I piece
         case I_PIECE:
-            state[1][0] = _type;
-            state[1][1] = _type;
-            state[1][2] = _type;
-            state[1][3] = _type;
+            state[2][0] = _type;
+            state[2][1] = _type;
+            state[2][2] = _type;
+            state[2][3] = _type;
             break;
 
         // J piece
@@ -94,7 +102,7 @@ int Tetrimino::getRow()
     return currentRow;
 }
 
-void Tetrimino::updateState( int col, int row, int value )
+void Tetrimino::updateState( int row, int col, int value )
 {
     state[row][col] = value;
 }
@@ -109,38 +117,36 @@ void Tetrimino::updateRow( int row )
     currentRow = row;
 }
 
-int Tetrimino::getGhostRow( PlayBoard board )
-{
-    for ( int i = 0; i < currentRow; i++ )
+bool Tetrimino::checkCollision( PlayBoard pb, int rowAdjustment, int colAdjustment ) {
+    for ( int row = 0; row < containerSize; row++ )
     {
-        bool collided = false;
-        for ( int j = 0; j < containerSize && collided == false; j++ )
+        for ( int col = 0; col < containerSize; col++ )
         {
-            for ( int k = 0; k < containerSize; k++)
+            if ( state[row][col] != 0 && pb.getCellState( currentRow + rowAdjustment + row, currentCol + colAdjustment + col ) != 0)
             {
-                if ( state[j][k] != 0 && board.getCellState( i + j, k + currentCol) != 0 )
-                {
-                    collided = true;
-                    break;
-                }
+                return true;
             }
         }
-        if ( !collided )
-        {
-            return i;
-        }
+    }
+    return false;
+}
+
+int Tetrimino::getGhostRow( PlayBoard board )
+{
+    //In some cases, the first (& second) row of tetrimino container is empty. So It's still valid for them to stay out of bound. 
+    for ( int i = 0; i < currentRow + 2; i++ )
+    {
+        if ( checkCollision( board, - i - 1 ) ) return currentRow - i;
     }
     return -1;
 }
 
-bool Tetrimino::movePieceHorizontally( PlayBoard board, bool right )
+void Tetrimino::movePieceHorizontally( PlayBoard board, bool right )
 {
-    if ( !checkCollision( board, *this, 0, right * 2 - 1 ) )
+    if ( !checkCollision( board, 0, right * 2 - 1 ) )
     {
         currentCol += right * 2 - 1;
-        return true;
     }
-    return false;
 }
 
 void Tetrimino::dropPiece( PlayBoard board, bool isHardDrop )
@@ -151,7 +157,7 @@ void Tetrimino::dropPiece( PlayBoard board, bool isHardDrop )
     }
     else
     {
-        currentRow -= 1;
+        if ( !checkCollision( board, -1, 0) ) currentRow -= 1;
     }
 }
 
@@ -161,23 +167,20 @@ void Tetrimino::rotatePiece( PlayBoard board, bool rotateClockwise )
     if ( type == O_PIECE ) return;
 
     //tmp is the result of rotating this piece.
-    Tetrimino tmp = *this;
+    Tetrimino tmp( type, currentRow, currentCol );
 
     //Rotate state matrix 90deg, direction depending on rotateClockwise flag
     for ( int i = 0; i < containerSize; i++ )
     {
         for ( int j = 0; j < containerSize; j++ )
         {
-            if ( state[i][j] != 0 )
+            if ( rotateClockwise )
             {
-                if ( rotateClockwise )
-                {
-                    tmp.updateState( containerSize - j, i, state[i][j]); 
-                }
-                else
-                {
-                    tmp.updateState( j, containerSize - i, state[i][j]);
-                }
+                tmp.updateState( containerSize - j - 1, i, state[i][j]); 
+            }
+            else
+            {
+                tmp.updateState( j, containerSize - i - 1, state[i][j]);
             }
         }
     }
@@ -266,9 +269,9 @@ void Tetrimino::rotatePiece( PlayBoard board, bool rotateClockwise )
 
     for ( int i = 0; i < ADJUSTMENTS_COUNT; i++ )
     {
-        int rowAdjustments = wallKickAdjustments[i][0] * coeff;
-        int colAdjustments = wallKickAdjustments[i][1] * coeff;
-        if ( !checkCollision( board, tmp, rowAdjustments, colAdjustments ) )
+        int colAdjustments = wallKickAdjustments[i][0] * coeff;
+        int rowAdjustments = wallKickAdjustments[i][1] * coeff;
+        if ( !tmp.checkCollision( board, rowAdjustments, colAdjustments ) )
         {
             currentRotationState += ( rotateClockwise ? 1 : -1 );
             if ( currentRotationState == 4 ) currentRotationState = 0;
