@@ -13,23 +13,34 @@ int main(int argv, char **args) {
     else
     {
         loadMedia();
+        srand(time(NULL));
+
         //Main loop flag
         bool quit = false;
-        srand(time(NULL));
+        bool gameOver = false;
         //Event handler
         SDL_Event e;
 
         //Initialize game & piece bag;
         PlayBoard board;
-        vector<Tetrimino> TetriminoQueue;
-        Tetrimino currentTetr = generateTetrimino();
-        board.modifyCell( 10, 5, 3 );
+        vector<Tetrimino> Tqueue;
+        Tetrimino currentTetr, hold;
+        bool holdable = true;
+
         //Game loop
         while ( !quit )
         {
-            // while ( TetriminoQueue.size() < 5 ) {
-            //     TetriminoQueue.push_back( generateTetrimino() );
-            // }
+            clearScreen();
+
+            if ( !gameOver && currentTetr.getType() == 0 )
+            {
+                pullNewTetrimino( Tqueue, currentTetr );
+                if ( currentTetr.checkCollision( board ) ) {
+                    gameOver = true;
+                }
+            }
+            
+
             //Handle events
             while ( SDL_PollEvent(&e) != 0 ) 
             {
@@ -38,18 +49,9 @@ int main(int argv, char **args) {
                 {
                     quit = true;
                 }
-
-                handlingKeyPress( e, board, currentTetr );
+                if ( !gameOver ) handlingKeyPress( e, board, currentTetr, hold, holdable );
             }
-            
-            SDL_SetRenderDrawColor( renderer, 0x00, 0x00, 0x00, 0xFF );
-            SDL_RenderClear( renderer );
-
-            renderBoard( board );
-            renderCurrentTetrimino( board, currentTetr );
-
-            //Update screen
-            SDL_RenderPresent( renderer );
+            renderFrame( board, currentTetr, Tqueue );
         }
     }
     close();

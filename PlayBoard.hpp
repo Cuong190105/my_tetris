@@ -18,6 +18,9 @@ class PlayBoard {
 
         //A matrix to store all tiles placed on the board
         vector<vector<int>> boardState;
+
+        //Score earned and lines cleared on this board
+        int score, line;
     public:
         //Play Board Constructor
         PlayBoard();
@@ -26,16 +29,16 @@ class PlayBoard {
         ~PlayBoard();
 
         //Get the width of the board
-        int getWidth();
+        int getWidth() const;
 
         //Get the height of the board
-        int getHeight();
+        int getHeight() const;
 
         /**
          * Get the state of a cell given its coordinate
          * \return State of the corresponding cell. -1 if the coordinate is outside the board
          */
-        int getCellState( int row, int col );
+        int getCellState( int row, int col ) const;
 
         //Change the value of a cell
         void modifyCell( int row, int col, int val );
@@ -45,6 +48,9 @@ class PlayBoard {
          * \return number of cleared rows
          */
         int clearCompletedRow( int upperRow, int lowerRow );
+
+        void updateBoard( int upperRow = HEIGHT_BY_TILE - 1, int lowerRow = 0 );
+
 };
 
 #endif

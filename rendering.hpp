@@ -4,19 +4,31 @@
 #include "Tetrimino.hpp"
 #include "Texture.hpp"
 
-//Render the playfield
-void renderBoard( PlayBoard pb );
+//Renders the playfield
+void renderBoard( const PlayBoard &pb );
 
-//Render the currently playing tetrimino on the field
-void renderCurrentTetrimino( PlayBoard pb, Tetrimino tetr );
+//Renders the currently playing tetrimino and its ghost on the field
+void renderCurrentTetrimino( const PlayBoard &pb, const Tetrimino &tetr );
 
-//Render the tetrimino queue
-void renderTetriminoQueue( vector<Tetrimino> Tqueue );
+/**
+ * Renders preview tetriminos in Hold/Queue container
+ * \param x, y Position of preview box's top left corner
+ */
+void renderPreviewTetrimino( int x, int y, const Tetrimino &tetr );
 
-//Render the held tetrimino
-void renderHeldTetrimino( Tetrimino tetr );
+//Renders the tetrimino queue
+void renderTetriminoQueue( const PlayBoard &pb, const vector<Tetrimino>& Tqueue );
 
-//Initialize SDL system, game window and renderer
+//Renders the held tetrimino
+void renderHeldTetrimino( const PlayBoard &pb, const Tetrimino &tetr );
+
+//Clears screen
+void clearScreen();
+
+//Renders the whole frame
+void renderFrame( const PlayBoard &pb, const Tetrimino &tetr, const vector<Tetrimino> &Tqueue );
+
+//Initializes SDL system, game window and renderer
 bool init();
 
 //Loads media

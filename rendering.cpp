@@ -8,7 +8,7 @@ const int WINDOW_HEIGHT = 1080;
 
 SDL_Window *game_window = NULL;
 
-void renderBoard( PlayBoard pb )
+void renderBoard( const PlayBoard &pb )
 {
     //Store the max and min of x and y of a pixel in the playfield
     const int LEFT_X = ( WINDOW_WIDTH - pb.getWidth() ) / 2;
@@ -62,8 +62,9 @@ void renderBoard( PlayBoard pb )
     }
 }
 
-void renderCurrentTetrimino( PlayBoard pb, Tetrimino tetr )
+void renderCurrentTetrimino( const PlayBoard& pb, const Tetrimino& tetr )
 {
+    //Playfield's bottom left corner's position
     const int BOTTOM_LEFT_X = ( WINDOW_WIDTH - pb.getWidth() ) / 2;
     const int BOTTOM_LEFT_Y = ( WINDOW_HEIGHT + pb.getHeight() ) / 2;
 
@@ -73,23 +74,84 @@ void renderCurrentTetrimino( PlayBoard pb, Tetrimino tetr )
         {
             if ( tetr.getCellState( row, col ) > 0 )
             {
-                tileSpriteSheet.render( BOTTOM_LEFT_X + ( tetr.getCol() + col ) * TILE_WIDTH,
-                                        BOTTOM_LEFT_Y - ( tetr.getRow() + row + 1) * TILE_WIDTH,
+                int tile_x = BOTTOM_LEFT_X + ( tetr.getCol() + col ) * TILE_WIDTH;
+                int tile_y = BOTTOM_LEFT_Y - ( tetr.getRow() + row + 1) * TILE_WIDTH;
+                tileSpriteSheet.render( tile_x, tile_y, 
                                         TILE_WIDTH, TILE_WIDTH,
                                         &tileSpriteClips[ tetr.getCellState( row, col ) ]);
+                
+                //Renders this tile's ghost.
+                int ghostOffsetY = ( tetr.getRow() - tetr.getGhostRow( pb ) ) * TILE_WIDTH;
+                tileSpriteSheet.render( tile_x, tile_y + ghostOffsetY, 
+                                        TILE_WIDTH, TILE_WIDTH, &tileSpriteClips[ 0 ]);
             }
         }
     }
 }
 
-void renderTetriminoQueue( vector<Tetrimino> Tqueue )
+void renderPreviewTetrimino( int x, int y, const Tetrimino &tetr )
 {
+    //Dimensions of a preview box.
+    const int BOX_WIDTH = TILE_WIDTH * 5;
+    const int BOX_HEIGHT = TILE_WIDTH * 3;
 
+    //Adjusts Y to center the tetrimino in preview box, offsetX is always half the container's dimension. 
+    int offsetX, offsetY;
+
+    //Center point of the preview box.
+    const int CENTER_X = BOX_WIDTH / 2 + x;
+    const int CENTER_Y = BOX_HEIGHT / 2 + y;
+
+    if ( tetr.getType() == I_PIECE )    offsetY = TILE_WIDTH * 5 / 2;
+    else                                offsetY = TILE_WIDTH * 2;
+
+    offsetX = tetr.getContainerSize() * TILE_WIDTH / 2;
+
+    for ( int row = 0; row < tetr.getContainerSize(); row++ )
+        for ( int col = 0; col < tetr.getContainerSize(); col++ )
+            if ( tetr.getCellState( row, col ) != 0 )
+                tileSpriteSheet.render( CENTER_X - offsetX + col * TILE_WIDTH,
+                                        CENTER_Y + offsetY - (row + 1) * TILE_WIDTH,
+                                        TILE_WIDTH, TILE_WIDTH,
+                                        &tileSpriteClips[ tetr.getCellState( row, col ) ] );
 }
 
-void renderHeldTetrimino( Tetrimino tetr )
+void renderTetriminoQueue( const PlayBoard &pb, const vector<Tetrimino>& Tqueue )
 {
+    //Position of the queue container's top left corner
+    const int TOP_LEFT_X = ( WINDOW_WIDTH + pb.getWidth() ) / 2;
+    const int TOP_LEFT_Y = ( WINDOW_HEIGHT - pb.getHeight() ) / 2;
+    
+    //Number of preview boxes. A queue can contain up to 5 tetriminos at a time.
+    const int BOX_NUMBER = 5;
+    const int BOX_HEIGHT = TILE_WIDTH * 3;
+    
+    for ( int i = 0; i < BOX_NUMBER; i++ )
+    {
+        renderPreviewTetrimino( TOP_LEFT_X, TOP_LEFT_Y + i * BOX_HEIGHT, Tqueue[i] );
+    }
+}
 
+void renderHeldTetrimino( const PlayBoard &pb, const Tetrimino &hold )
+{
+    const int TOP_LEFT_X = ( WINDOW_WIDTH - pb.getWidth() ) / 2 - ( TILE_WIDTH * 5 );
+    const int TOP_LEFT_Y = ( WINDOW_HEIGHT - pb.getHeight() ) / 2;
+    renderPreviewTetrimino( TOP_LEFT_X, TOP_LEFT_Y, hold );
+}
+
+void clearScreen()
+{
+    SDL_SetRenderDrawColor( renderer, 0x00, 0x00, 0x00, 0xFF );
+    SDL_RenderClear( renderer );
+}
+
+void renderFrame( const PlayBoard &pb, const Tetrimino& tetr, const vector<Tetrimino> &Tqueue )
+{
+    //Update screen
+    renderBoard( pb );
+    renderTetriminoQueue ( pb, Tqueue ) ;
+    if ( tetr.getType() != 0 ) renderCurrentTetrimino( pb, tetr );
+    SDL_RenderPresent( renderer );
 }
 
 bool init()

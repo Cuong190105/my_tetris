@@ -1,5 +1,6 @@
 #include "PlayBoard.hpp"
 #include <algorithm>
+#include <iostream>
 using namespace std;
 
 
@@ -12,12 +13,12 @@ PlayBoard::PlayBoard()
 
 PlayBoard::~PlayBoard() {}
 
-int PlayBoard::getWidth()
+int PlayBoard::getWidth() const
 {
     return w;
 }
 
-int PlayBoard::getHeight()
+int PlayBoard::getHeight() const
 {
     return h;
 }
@@ -31,7 +32,7 @@ int PlayBoard::clearCompletedRow( int upperRow, int lowerRow )
 {
     int rowCleared = 0;
 
-    for ( int i = upperRow; i >= lowerRow; i-- )
+    for ( int i = upperRow; i >= max( lowerRow, 0 ); i-- )
     {
         if ( find( boardState[i].begin(), boardState[i].end(), 0 ) == boardState[i].end() )
         {
@@ -43,9 +44,28 @@ int PlayBoard::clearCompletedRow( int upperRow, int lowerRow )
     return rowCleared;
 }
 
-int PlayBoard::getCellState( int row, int col )
+int PlayBoard::getCellState( int row, int col ) const
 {
     if ( row < 0 || row >= HEIGHT_BY_TILE || col < 0 || col >= WIDTH_BY_TILE ) return -1;
     return boardState[row][col];
 }
 
+void PlayBoard::updateBoard( int upperRow, int lowerRow )
+{
+    int rowCleared = clearCompletedRow( upperRow, lowerRow );
+    line += rowCleared;
+    switch(rowCleared)
+    {
+        case 1:
+            score += 100;
+            break;
+        case 2:
+            score += 300;
+            break;
+        case 3:
+            score += 500;
+            break;
+        case 4:
+            score += 800;
+    }
+}

@@ -7,6 +7,9 @@ using namespace std;
 const int START_ROW = 20;
 const int START_COL = 3;
 
+//7 types of tetrimino block
+enum Ttype { I_PIECE = 1, J_PIECE, L_PIECE, O_PIECE, S_PIECE, Z_PIECE, T_PIECE };
+
 class Tetrimino {
     private:
         //A n*n matrix which stores the state of each tile of the tetrimino (a playing piece that falls from the top of the board).
@@ -33,23 +36,29 @@ class Tetrimino {
         int currentRotationState;
 
     public:
+        //Default constructor with no arguments
+        Tetrimino();
+        
         //Tetrimino constructor
         Tetrimino( int _type, int row = START_ROW, int col = START_COL );
 
         //Tetrimino destructor
         ~Tetrimino();
         
+        //Returns type
+        int getType() const;
+
         //Return containerSize
-        int getContainerSize();
+        int getContainerSize() const;
 
         //Return a state's cell
-        int getCellState( int row, int col );
+        int getCellState( int row, int col ) const;
 
         //Return currentCol
-        int getCol();
+        int getCol() const;
 
         //Return currentRow
-        int getRow();
+        int getRow() const;
         
         //Modify the content of a state's cell
         void updateState( int col, int row, int value );
@@ -67,14 +76,17 @@ class Tetrimino {
          * fall down until colliding with the stack without moving horizontally.
          * \return 
          */
-        int getGhostRow( PlayBoard board );
+        int getGhostRow( PlayBoard board ) const;
 
         /**
          * Checks if this tetrimino collides with any other element (border, another active cell) of the playfield
          * \param board The playfield this tetrimino is currently in.
          * \param rowAdjustment \param colAdjustment Adjusting tetrimino's position for specific purposes (checking valid movement or rotation, etc.)
         */
-        bool checkCollision( PlayBoard board, int rowAdjustment = 0, int colAdjustment = 0 );
+        bool checkCollision( const PlayBoard &board, int rowAdjustment = 0, int colAdjustment = 0 ) const;
+
+        //Handles tetrimino's lock
+        void lockTetrimino( PlayBoard &pb );
 
         /**
          * Control horizontal movement of the piece.
@@ -86,11 +98,13 @@ class Tetrimino {
          * Control dropping movement of the piece
          * Soft drop: The piece drops one row at a time
          * Hard drop: The piece drops all the way down to the top of the stack
+         * \return true if the drop locks the piece on the stack, else false.
          */
-        void dropPiece( PlayBoard board, bool isHardDrop );
+        void dropPiece( PlayBoard &board, bool isHardDrop, bool &holdable );
 
         //Control rotation of the piece
         void rotatePiece( PlayBoard board, bool rotateClockwise );
+
 };
 
 #endif

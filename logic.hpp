@@ -4,9 +4,9 @@
 #include <SDL.h>
 using namespace std;
 
-void updateBoard( PlayBoard pb, Tetrimino tetr );
+void generateTetrimino( vector<Tetrimino> &Tqueue );
 
-Tetrimino generateTetrimino();
+void pullNewTetrimino( vector<Tetrimino> &Tqueue, Tetrimino &tetr );
 
-void handlingKeyPress( SDL_Event &e, const PlayBoard &pb, Tetrimino &tetr );
+void handlingKeyPress( SDL_Event &e, PlayBoard &pb, Tetrimino &tetr, Tetrimino &held, bool &holdable );
 #endif
