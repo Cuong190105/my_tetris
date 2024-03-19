@@ -4,9 +4,12 @@
 using namespace std;
 
 
-PlayBoard::PlayBoard()
+PlayBoard::PlayBoard( int _level )
 {
     boardState = vector<vector<int>>( HEIGHT_BY_TILE, vector<int>( WIDTH_BY_TILE, 0 ) );
+    score = 0;
+    line = 0;
+    level = _level;
     w = TILE_WIDTH * WIDTH_BY_TILE;
     h = TILE_WIDTH * (HEIGHT_BY_TILE - HIDDEN_ROW);
 }
@@ -21,6 +24,20 @@ int PlayBoard::getWidth() const
 int PlayBoard::getHeight() const
 {
     return h;
+}
+
+int PlayBoard::getScore() const
+{
+    return score;
+}
+int PlayBoard::getLines() const
+{
+    return line;
+}
+
+int PlayBoard::getLevel() const
+{
+    return level;
 }
 
 void PlayBoard::modifyCell( int row, int col, int val )

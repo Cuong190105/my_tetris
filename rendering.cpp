@@ -1,10 +1,8 @@
 #include "rendering.hpp"
 #include <SDL_image.h>
 #include <iostream>
+#include <cstdlib>
 using namespace std;
-
-const int WINDOW_WIDTH = 1920;
-const int WINDOW_HEIGHT = 1080;
 
 SDL_Window *game_window = NULL;
 
@@ -17,9 +15,9 @@ void renderBoard( const PlayBoard &pb )
     const int BOTTOM_Y = TOP_Y + pb.getHeight();
 
     //Draw board background color
-    // SDL_SetRenderDrawColor( renderer, 0x00, 0xFF, 0xFF, 0xFF );
+    SDL_SetRenderDrawColor( renderer, 0, 0, 0, 0xFF );
     SDL_Rect board { LEFT_X, TOP_Y , pb.getWidth(), pb.getHeight() };
-    // SDL_RenderDrawRect( renderer, &board );
+    SDL_RenderFillRect( renderer, &board );
 
     //Draw board gridlines
     SDL_SetRenderDrawColor( renderer, 0x22, 0x22, 0x22, 0xFF );
@@ -64,26 +62,29 @@ void renderBoard( const PlayBoard &pb )
 
 void renderCurrentTetrimino( const PlayBoard& pb, const Tetrimino& tetr )
 {
-    //Playfield's bottom left corner's position
-    const int BOTTOM_LEFT_X = ( WINDOW_WIDTH - pb.getWidth() ) / 2;
-    const int BOTTOM_LEFT_Y = ( WINDOW_HEIGHT + pb.getHeight() ) / 2;
-
-    for ( int row = 0; row < tetr.getContainerSize(); row++ )
+    if ( tetr.getType() )
     {
-        for ( int col = 0; col < tetr.getContainerSize(); col++ )
+        //Playfield's bottom left corner's position
+        const int BOTTOM_LEFT_X = ( WINDOW_WIDTH - pb.getWidth() ) / 2;
+        const int BOTTOM_LEFT_Y = ( WINDOW_HEIGHT + pb.getHeight() ) / 2;
+
+        for ( int row = 0; row < tetr.getContainerSize(); row++ )
         {
-            if ( tetr.getCellState( row, col ) > 0 )
+            for ( int col = 0; col < tetr.getContainerSize(); col++ )
             {
-                int tile_x = BOTTOM_LEFT_X + ( tetr.getCol() + col ) * TILE_WIDTH;
-                int tile_y = BOTTOM_LEFT_Y - ( tetr.getRow() + row + 1) * TILE_WIDTH;
-                tileSpriteSheet.render( tile_x, tile_y, 
-                                        TILE_WIDTH, TILE_WIDTH,
-                                        &tileSpriteClips[ tetr.getCellState( row, col ) ]);
-                
-                //Renders this tile's ghost.
-                int ghostOffsetY = ( tetr.getRow() - tetr.getGhostRow( pb ) ) * TILE_WIDTH;
-                tileSpriteSheet.render( tile_x, tile_y + ghostOffsetY, 
-                                        TILE_WIDTH, TILE_WIDTH, &tileSpriteClips[ 0 ]);
+                if ( tetr.getCellState( row, col ) > 0 )
+                {
+                    int tile_x = BOTTOM_LEFT_X + ( tetr.getCol() + col ) * TILE_WIDTH;
+                    int tile_y = BOTTOM_LEFT_Y - ( tetr.getRow() + row + 1) * TILE_WIDTH;
+                    tileSpriteSheet.render( tile_x, tile_y, 
+                                            TILE_WIDTH, TILE_WIDTH,
+                                            &tileSpriteClips[ tetr.getCellState( row, col ) ]);
+                    
+                    //Renders this tile's ghost.
+                    int ghostOffsetY = ( tetr.getRow() - tetr.getGhostRow( pb ) ) * TILE_WIDTH;
+                    tileSpriteSheet.render( tile_x, tile_y + ghostOffsetY, 
+                                            TILE_WIDTH, TILE_WIDTH, &tileSpriteClips[ 0 ]);
+                }
             }
         }
     }
@@ -92,9 +93,9 @@ void renderCurrentTetrimino( const PlayBoard& pb, const Tetrimino& tetr )
 void renderPreviewTetrimino( int x, int y, const Tetrimino &tetr )
 {
     //Dimensions of a preview box.
-    const int BOX_WIDTH = TILE_WIDTH * 5;
-    const int BOX_HEIGHT = TILE_WIDTH * 3;
-
+    const int BOX_WIDTH = TILE_WIDTH * 3;
+    const int BOX_HEIGHT = TILE_WIDTH * 2;
+    const int PREVIEW_TILE_WIDTH = TILE_WIDTH * 2 / 3;
     //Adjusts Y to center the tetrimino in preview box, offsetX is always half the container's dimension. 
     int offsetX, offsetY;
 
@@ -102,29 +103,32 @@ void renderPreviewTetrimino( int x, int y, const Tetrimino &tetr )
     const int CENTER_X = BOX_WIDTH / 2 + x;
     const int CENTER_Y = BOX_HEIGHT / 2 + y;
 
-    if ( tetr.getType() == I_PIECE )    offsetY = TILE_WIDTH * 5 / 2;
-    else                                offsetY = TILE_WIDTH * 2;
+    if ( tetr.getType() == I_PIECE )    offsetY = PREVIEW_TILE_WIDTH * 5 / 2;
+    else                                offsetY = PREVIEW_TILE_WIDTH * 2;
 
-    offsetX = tetr.getContainerSize() * TILE_WIDTH / 2;
+    offsetX = tetr.getContainerSize() * PREVIEW_TILE_WIDTH / 2;
 
     for ( int row = 0; row < tetr.getContainerSize(); row++ )
         for ( int col = 0; col < tetr.getContainerSize(); col++ )
             if ( tetr.getCellState( row, col ) != 0 )
-                tileSpriteSheet.render( CENTER_X - offsetX + col * TILE_WIDTH,
-                                        CENTER_Y + offsetY - (row + 1) * TILE_WIDTH,
-                                        TILE_WIDTH, TILE_WIDTH,
+                tileSpriteSheet.render( CENTER_X - offsetX + col * PREVIEW_TILE_WIDTH,
+                                        CENTER_Y + offsetY - (row + 1) * PREVIEW_TILE_WIDTH,
+                                        PREVIEW_TILE_WIDTH, PREVIEW_TILE_WIDTH,
                                         &tileSpriteClips[ tetr.getCellState( row, col ) ] );
 }
 
 void renderTetriminoQueue( const PlayBoard &pb, const vector<Tetrimino>& Tqueue )
 {
+    //padding between queue and playfield
+    const int PADDING = TILE_WIDTH * 2 / 3;
+
     //Position of the queue container's top left corner
-    const int TOP_LEFT_X = ( WINDOW_WIDTH + pb.getWidth() ) / 2;
+    const int TOP_LEFT_X = ( WINDOW_WIDTH + pb.getWidth() ) / 2 + PADDING;
     const int TOP_LEFT_Y = ( WINDOW_HEIGHT - pb.getHeight() ) / 2;
     
     //Number of preview boxes. A queue can contain up to 5 tetriminos at a time.
     const int BOX_NUMBER = 5;
-    const int BOX_HEIGHT = TILE_WIDTH * 3;
+    const int BOX_HEIGHT = TILE_WIDTH * 2;
     
     for ( int i = 0; i < BOX_NUMBER; i++ )
     {
@@ -134,9 +138,65 @@ void renderTetriminoQueue( const PlayBoard &pb, const vector<Tetrimino>& Tqueue 
 
 void renderHeldTetrimino( const PlayBoard &pb, const Tetrimino &hold )
 {
-    const int TOP_LEFT_X = ( WINDOW_WIDTH - pb.getWidth() ) / 2 - ( TILE_WIDTH * 5 );
-    const int TOP_LEFT_Y = ( WINDOW_HEIGHT - pb.getHeight() ) / 2;
-    renderPreviewTetrimino( TOP_LEFT_X, TOP_LEFT_Y, hold );
+    if ( hold.getType() ) {
+        const int TOP_LEFT_X = ( WINDOW_WIDTH - pb.getWidth() ) / 2 - ( TILE_WIDTH * 4 );
+        const int TOP_LEFT_Y = ( WINDOW_HEIGHT - pb.getHeight() ) / 2;
+        renderPreviewTetrimino( TOP_LEFT_X, TOP_LEFT_Y, hold );
+    }
+}
+
+void renderText( string text, int x, int y, bool isBold, bool isRightAligned, double scale = 1 )
+{
+    textTexture.loadText( text, ( isBold ? fontBold : fontRegular ) );
+    textTexture.render( x - isRightAligned * textTexture.getWidth() * scale, y, textTexture.getWidth() * scale, textTexture.getHeight() * scale );
+}
+
+void renderStatistics( const PlayBoard &pb )
+{
+    //Text box's structure:
+    //-----LINE_SPACING-----
+    //TITLE (left/right aligned)
+    //-----LINE_SPACING-----
+    //PRIMARY_TEXT (alignment follows TITLE)
+    //-----LINE_SPACING-----
+
+    // TITLE_HEIGHT = TILE_WIDTH;
+    // LINE_SPACING = TILE_WIDTH / 2;
+
+    const int SIDE_PADDING = TILE_WIDTH;
+    const int BOX_HEIGHT = TILE_WIDTH * 4;
+    const double PRIMARY_TEXT_SCALE = 3 / 2.0;
+    
+    //Relative position of text in textbox
+    const int PRIMARY_TEXT_Y = TILE_WIDTH * 2;
+    const int TITLE_Y = TILE_WIDTH;
+
+    //Textbox's left/right (depends on its textbox) side
+    
+    //Used for textbox on the left side of playfield 
+    const int LEFT_X =  ( WINDOW_WIDTH - pb.getWidth() ) / 2 - SIDE_PADDING; 
+    //Used for textbox on the left side of playfield 
+    const int RIGHT_X =  ( WINDOW_WIDTH + pb.getWidth() ) / 2 + SIDE_PADDING;
+
+    //Bottom of playfield
+    const int BOTTOM_Y =  ( WINDOW_HEIGHT + pb.getHeight() ) / 2;
+
+    //Display line cleared
+    renderText( "LINES", LEFT_X, BOTTOM_Y + TITLE_Y - BOX_HEIGHT, false, true );
+    renderText( to_string( pb.getLines() ), LEFT_X, BOTTOM_Y + PRIMARY_TEXT_Y - BOX_HEIGHT, true, true, PRIMARY_TEXT_SCALE ); 
+
+    //Display level speed
+    renderText( "LV SPEED", LEFT_X, BOTTOM_Y + TITLE_Y - ( BOX_HEIGHT * 2 ), false, true );
+    renderText( to_string( pb.getLevel() ), LEFT_X, BOTTOM_Y + PRIMARY_TEXT_Y - ( BOX_HEIGHT * 2 ), true, true, PRIMARY_TEXT_SCALE ); 
+
+    //Display score
+    renderText( "SCORE", RIGHT_X, BOTTOM_Y + TITLE_Y - BOX_HEIGHT, false, false );
+    renderText( to_string( pb.getScore() ), RIGHT_X, BOTTOM_Y + PRIMARY_TEXT_Y - BOX_HEIGHT, true, false, PRIMARY_TEXT_SCALE ); 
+    
+    // Display time
+    renderText( "TIME", RIGHT_X, BOTTOM_Y + TITLE_Y - ( BOX_HEIGHT * 2 ), false, false );
+    renderText( to_string( pb.getLevel() ), RIGHT_X, BOTTOM_Y + PRIMARY_TEXT_Y - ( BOX_HEIGHT * 2 ), true, false, PRIMARY_TEXT_SCALE ); 
+
 }
 
 void clearScreen()
@@ -145,12 +205,15 @@ void clearScreen()
     SDL_RenderClear( renderer );
 }
 
-void renderFrame( const PlayBoard &pb, const Tetrimino& tetr, const vector<Tetrimino> &Tqueue )
+void renderFrame( const PlayBoard &pb, const Tetrimino& tetr, const vector<Tetrimino> &Tqueue, const Tetrimino &hold )
 {
     //Update screen
+    bgImage.render();
     renderBoard( pb );
-    renderTetriminoQueue ( pb, Tqueue ) ;
-    if ( tetr.getType() != 0 ) renderCurrentTetrimino( pb, tetr );
+    renderTetriminoQueue ( pb, Tqueue );
+    renderCurrentTetrimino( pb, tetr );
+    renderHeldTetrimino( pb, hold );
+    renderStatistics( pb );
     SDL_RenderPresent( renderer );
 }
 
@@ -192,6 +255,12 @@ bool init()
                     printf( "SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError() );
                     success = false;
                 }
+                //Initialize SDL_ttf
+                if( TTF_Init() == -1 )
+                {
+                    printf( "SDL_ttf could not initialize! SDL_ttf Error: %s\n", TTF_GetError() );
+                    success = false;
+                }
             }
         }
     }
@@ -222,12 +291,40 @@ void loadMedia()
 		    tileSpriteClips[ i + 4 ].h = 300;
         }
     }
+    fontBold = TTF_OpenFont("gameFontBold.ttf", 30);
+    if ( fontBold == NULL )
+    {
+        cout << "Failed to load font." << endl;
+    }
+    fontRegular = TTF_OpenFont("gameFontRegular.ttf", 30);
+    if ( fontRegular == NULL )
+    {
+        cout << "Failed to load font." << endl;
+    }
+}
 
+void loadRandomBackground()
+{
+    int select = rand() % 10 + 1;
+    string bgFile = "src/bg/bg" + to_string(select) + ".png";
+    if ( !bgImage.loadFromFile( bgFile ) )
+    {
+        cout << "Failed to load background." << endl;
+    }
 }
 
 void close()
 {
+    //Destroy all textures
     tileSpriteSheet.free();
+    textTexture.free();
+    bgImage.free();
+    //Free font
+    TTF_CloseFont( fontBold );
+    TTF_CloseFont( fontRegular );
+    fontBold = NULL;
+    fontRegular = NULL;
+
     //Destroy window
     SDL_DestroyRenderer( renderer );
     SDL_DestroyWindow( game_window );
@@ -235,5 +332,7 @@ void close()
     renderer = NULL;
 
     //Quit SDL
+    TTF_Quit();
+    IMG_Quit();
     SDL_Quit();
 }

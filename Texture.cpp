@@ -1,12 +1,21 @@
 #include "Texture.hpp"
 #include <SDL_image.h>
 using namespace std;
-SDL_Rect tileSpriteClips[8];
 
 //Stores the tile sprite sheet
 Texture tileSpriteSheet;
+//Sprite sheet clipping rectangles
+SDL_Rect tileSpriteClips[8];
+//Stores font
+TTF_Font *fontBold;
+TTF_Font *fontRegular;
+//Used for rendering text
+Texture textTexture;
+//Background image
+Texture bgImage;
 
 SDL_Renderer *renderer = NULL;
+
 Texture::Texture()
 {
     texture = NULL;
@@ -28,6 +37,40 @@ void Texture::free()
         width = 0;
         height = 0;
     }
+}
+
+bool Texture::loadText( string text, TTF_Font *font )
+{
+	free();
+	SDL_Color color { 0xFF, 0xFF, 0xFF };
+	SDL_Surface *textSurface = TTF_RenderText_Solid(font, text.c_str(), color);
+
+	if( textSurface == NULL )
+    {
+        printf( "Unable to render text surface! SDL_ttf Error: %s\n", TTF_GetError() );
+    }
+    else
+    {
+        //Create texture from surface pixels
+        texture = SDL_CreateTextureFromSurface( renderer, textSurface );
+        if( texture == NULL )
+        {
+            printf( "Unable to create texture from rendered text! SDL Error: %s\n", SDL_GetError() );
+        }
+        else
+        {
+            //Get image dimensions
+            width = textSurface->w;
+            height = textSurface->h;
+        }
+
+        //Get rid of old surface
+        SDL_FreeSurface( textSurface );
+    }
+    
+    //Return success
+    return texture != NULL;
+
 }
 
 bool Texture::loadFromFile( string path )

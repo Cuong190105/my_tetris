@@ -1,10 +1,16 @@
 #ifndef Texture_hpp
 #define Texture_hpp
 #include <SDL.h>
+#include <SDL_ttf.h>
 #include <string>
 using namespace std;
 
 extern SDL_Renderer *renderer;
+extern TTF_Font *fontBold;
+extern TTF_Font *fontRegular;
+
+const int WINDOW_WIDTH = 1920;
+const int WINDOW_HEIGHT = 1080;
 
 class Texture
 {
@@ -18,6 +24,9 @@ class Texture
         //Manual Deallocator
         void free();
 
+        //Loads text
+        bool loadText( string text, TTF_Font *font);
+
         //Loads texture from file
         bool loadFromFile( string path );
 
@@ -28,7 +37,7 @@ class Texture
          * \param h height of the destination frame
          * \param clip a pointer to a SDL_Rect indicating part of the texture being copied, leave NULL to copy the whole texture 
          */
-        void render( int x, int y, int w, int h, SDL_Rect* clip = NULL );
+        void render( int x = 0, int y = 0, int w = WINDOW_WIDTH, int h = WINDOW_HEIGHT, SDL_Rect* clip = NULL );
 
         //Returns width
         int getWidth();
@@ -39,5 +48,6 @@ class Texture
 
 extern SDL_Rect tileSpriteClips[8];
 extern Texture tileSpriteSheet;
-
+extern Texture textTexture;
+extern Texture bgImage;
 #endif

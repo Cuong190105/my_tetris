@@ -19,36 +19,47 @@ class PlayBoard {
         //A matrix to store all tiles placed on the board
         vector<vector<int>> boardState;
 
-        //Score earned and lines cleared on this board
-        int score, line;
+        //Score earned, lines cleared and current level on this board
+        //Current level: Indicates tetrimino's falling speed. Normally, level get +1 for every 10 lines cleared.
+        int score, line, level;
     public:
         //Play Board Constructor
-        PlayBoard();
+        PlayBoard( int _level = 1 );
 
         //Destructor
         ~PlayBoard();
 
-        //Get the width of the board
+        //Gets the width of the board
         int getWidth() const;
 
-        //Get the height of the board
+        //Gets the height of the board
         int getHeight() const;
 
+        //Gets current board's score
+        int getScore() const;
+
+        //Gets current board's lines cleared
+        int getLines() const;
+
+        //Gets current board's level
+        int getLevel() const;
+        
         /**
-         * Get the state of a cell given its coordinate
+         * Gets the state of a cell given its coordinate
          * \return State of the corresponding cell. -1 if the coordinate is outside the board
          */
         int getCellState( int row, int col ) const;
 
-        //Change the value of a cell
+        //Changes the value of a cell
         void modifyCell( int row, int col, int val );
         
         /**
-         * Clear all completed rows from row lowerRow to row upperRow
+         * Clears all completed rows from row lowerRow to row upperRow
          * \return number of cleared rows
          */
         int clearCompletedRow( int upperRow, int lowerRow );
 
+        //Updates board's state & statistic (score/line cleared) whenever a tetrimino locks in
         void updateBoard( int upperRow = HEIGHT_BY_TILE - 1, int lowerRow = 0 );
 
 };

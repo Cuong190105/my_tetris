@@ -12,20 +12,22 @@ int main(int argv, char **args) {
     }
     else
     {
-        loadMedia();
         srand(time(NULL));
+        loadMedia();
+        loadRandomBackground();
+        SDL_Event e;
 
         //Main loop flag
         bool quit = false;
         bool gameOver = false;
         //Event handler
-        SDL_Event e;
 
         //Initialize game & piece bag;
         PlayBoard board;
         vector<Tetrimino> Tqueue;
         Tetrimino currentTetr, hold;
         bool holdable = true;
+
 
         //Game loop
         while ( !quit )
@@ -51,7 +53,7 @@ int main(int argv, char **args) {
                 }
                 if ( !gameOver ) handlingKeyPress( e, board, currentTetr, hold, holdable );
             }
-            renderFrame( board, currentTetr, Tqueue );
+            renderFrame( board, currentTetr, Tqueue, hold );
         }
     }
     close();

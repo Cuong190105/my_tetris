@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <iostream>
 #include <SDL.h>
-#include <cstdlib>
 #include <random>
 #include "logic.hpp"
 using namespace std;
@@ -43,7 +42,7 @@ void holdPiece( Tetrimino &tetr, Tetrimino &hold, bool &holdable )
 
 void handlingKeyPress( SDL_Event &e, PlayBoard &pb, Tetrimino &tetr, Tetrimino &hold, bool &holdable )
 {
-    if ( e.type == SDL_KEYDOWN && e.key.repeat == 0 )
+    if ( e.type == SDL_KEYDOWN )
     {
         // cout << SDL_GetKeyName(e.key.keysym.sym) << endl;
         switch( e.key.keysym.sym )
@@ -73,3 +72,8 @@ void handlingKeyPress( SDL_Event &e, PlayBoard &pb, Tetrimino &tetr, Tetrimino &
         }
     }
 }
+
+// void ingameProgress()
+// {
+
+// }
