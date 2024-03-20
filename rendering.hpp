@@ -1,26 +1,26 @@
 #ifndef rendering_hpp
 #define rendering_hpp
 #include <SDL.h>
-#include "Tetrimino.hpp"
+#include "Player.hpp"
 #include "Texture.hpp"
 
 //Renders the playfield
 void renderBoard( const PlayBoard &pb );
 
-//Renders the currently playing tetrimino and its ghost on the field
-void renderCurrentTetrimino( const PlayBoard &pb, const Tetrimino &tetr );
+//Renders the currently playing tetromino and its ghost on the field
+void renderCurrentTetromino( const PlayBoard &pb, const Tetromino &tetr, int ghostRow );
 
 /**
- * Renders preview tetriminos in Hold/Queue container
+ * Renders preview tetrominos in Hold/Queue container
  * \param x, y Position of preview box's top left corner
  */
-void renderPreviewTetrimino( int x, int y, const Tetrimino &tetr );
+void renderPreviewTetromino( int x, int y, const Tetromino &tetr );
 
-//Renders the tetrimino queue
-void renderTetriminoQueue( const PlayBoard &pb, const vector<Tetrimino>& Tqueue );
+//Renders the tetromino queue
+void renderTetrominoQueue( const PlayBoard &pb, const vector<Tetromino>& Tqueue );
 
-//Renders the held tetrimino
-void renderHeldTetrimino( const PlayBoard &pb, const Tetrimino &tetr );
+//Renders the held tetromino
+void renderHeldTetromino( const PlayBoard &pb, const Tetromino &tetr );
 
 /**
  * Renders text
@@ -31,13 +31,13 @@ void renderHeldTetrimino( const PlayBoard &pb, const Tetrimino &tetr );
  */
 void renderText( string text, int x, int y, int alignment, double scale = 1 );
 
-void renderStatistics( const PlayBoard &pb );
+void renderStatistics( const Player &player );
 
 //Clears screen
 void clearScreen();
 
 //Renders the whole frame
-void renderFrame( const PlayBoard &pb, const Tetrimino &tetr, const vector<Tetrimino> &Tqueue, const Tetrimino &hold );
+void renderFrame( const Player &player, const vector<Tetromino> &Tqueue );
 
 //Initializes SDL system, game window and renderer
 bool init();

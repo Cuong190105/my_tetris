@@ -4,12 +4,9 @@
 using namespace std;
 
 
-PlayBoard::PlayBoard( int _level )
+PlayBoard::PlayBoard()
 {
     boardState = vector<vector<int>>( HEIGHT_BY_TILE, vector<int>( WIDTH_BY_TILE, 0 ) );
-    score = 0;
-    line = 0;
-    level = _level;
     w = TILE_WIDTH * WIDTH_BY_TILE;
     h = TILE_WIDTH * (HEIGHT_BY_TILE - HIDDEN_ROW);
 }
@@ -26,39 +23,9 @@ int PlayBoard::getHeight() const
     return h;
 }
 
-int PlayBoard::getScore() const
-{
-    return score;
-}
-int PlayBoard::getLines() const
-{
-    return line;
-}
-
-int PlayBoard::getLevel() const
-{
-    return level;
-}
-
 void PlayBoard::modifyCell( int row, int col, int val )
 {
     boardState[row][col] = val;
-}
-
-int PlayBoard::clearCompletedRow( int upperRow, int lowerRow )
-{
-    int rowCleared = 0;
-
-    for ( int i = upperRow; i >= max( lowerRow, 0 ); i-- )
-    {
-        if ( find( boardState[i].begin(), boardState[i].end(), 0 ) == boardState[i].end() )
-        {
-            boardState.erase( boardState.begin() + i );
-            rowCleared++;
-        }
-    }
-    for ( int i = 0; i < rowCleared; i++ ) boardState.push_back( vector<int>( 10, 0 ) );
-    return rowCleared;
 }
 
 int PlayBoard::getCellState( int row, int col ) const
@@ -67,22 +34,35 @@ int PlayBoard::getCellState( int row, int col ) const
     return boardState[row][col];
 }
 
+int PlayBoard::countCompletedRow( int upperRow, int lowerRow )
+{
+    int rowCleared = 0;
+
+    for ( int i = upperRow; i >= max( lowerRow, 0 ); i-- )
+    {
+        if ( find( boardState[i].begin(), boardState[i].end(), 0 ) == boardState[i].end() )
+        {
+            rowCleared++;
+        }
+    }
+    return rowCleared;
+}
+
 void PlayBoard::updateBoard( int upperRow, int lowerRow )
 {
-    int rowCleared = clearCompletedRow( upperRow, lowerRow );
-    line += rowCleared;
-    switch(rowCleared)
+    int row_cleared = 0;
+    for ( int i = upperRow; i >= max( lowerRow, 0 ); i-- )
     {
-        case 1:
-            score += 100;
-            break;
-        case 2:
-            score += 300;
-            break;
-        case 3:
-            score += 500;
-            break;
-        case 4:
-            score += 800;
+        bool full = true;
+        for ( int j = 0; j < WIDTH_BY_TILE; j++ )
+        {
+            if ( boardState[i][j] <= 0 )
+            {
+                full = false;
+                break;
+            }
+        }
+        if ( full ) {boardState.erase( boardState.begin() + i ); row_cleared++;}
     }
+    for ( int i = 0; i < row_cleared; i++ ) boardState.push_back( vector<int>( 10, 0 ) );
 }

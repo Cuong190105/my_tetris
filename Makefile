@@ -1,5 +1,5 @@
 #OBJS specifies which files to compile as part of the project
-OBJS = main.cpp PlayBoard.cpp Tetrimino.cpp logic.cpp rendering.cpp Texture.cpp
+OBJS = main.cpp PlayBoard.cpp Tetromino.cpp logic.cpp rendering.cpp Texture.cpp Player.cpp
 
 #OBJ_NAME specifies the name of our exectuable
 OBJ_NAME = main

@@ -3,11 +3,12 @@
 #include <SDL.h>
 #include <random>
 #include "logic.hpp"
+#include "rendering.hpp"
 using namespace std;
 
-void generateTetrimino( vector<Tetrimino> &Tqueue )
+void generateTetromino( vector<Tetromino> &Tqueue )
 {
-    //7-bag randomization (Takes all 7 types of tetrimino, shuffles them, then pushes them into the queue).
+    //7-bag randomization (Takes all 7 types of tetromino, shuffles them, then pushes them into the queue).
     //This method guarantees every unique pieces will be spawn within 7 turns, minimizes the missing/repetition
     //of a piece in some cases.
     while ( Tqueue.size() <= 7 ) {
@@ -17,30 +18,12 @@ void generateTetrimino( vector<Tetrimino> &Tqueue )
         shuffle(v.begin(), v.end(), g);
         for ( int i = 0; i < 7; i++ )
         {
-            Tqueue.push_back( Tetrimino( v[i] ) );
+            Tqueue.push_back( Tetromino( v[i] ) );
         }
     }
 }
 
-void pullNewTetrimino( vector<Tetrimino> &Tqueue, Tetrimino &tetr )
-{
-    generateTetrimino( Tqueue );
-    tetr = Tqueue[0];
-    Tqueue.erase(Tqueue.begin());
-}
-
-void holdPiece( Tetrimino &tetr, Tetrimino &hold, bool &holdable )
-{
-    if ( holdable )
-    {
-        int tmp = hold.getType();
-        hold = Tetrimino(tetr.getType());
-        tetr = Tetrimino(tmp);
-        holdable = false;
-    }
-}
-
-void handlingKeyPress( SDL_Event &e, PlayBoard &pb, Tetrimino &tetr, Tetrimino &hold, bool &holdable )
+void handlingKeyPress( SDL_Event &e, Player& player )
 {
     if ( e.type == SDL_KEYDOWN )
     {
@@ -50,13 +33,13 @@ void handlingKeyPress( SDL_Event &e, PlayBoard &pb, Tetrimino &tetr, Tetrimino &
             //Drops
             case SDLK_DOWN:
             case SDLK_SPACE:
-                tetr.dropPiece( pb, e.key.keysym.sym == SDLK_SPACE, holdable );
+                player.dropPiece( e.key.keysym.sym == SDLK_SPACE );
                 break;
             
             //Moves left or right
             case SDLK_LEFT:
             case SDLK_RIGHT:
-                tetr.movePieceHorizontally( pb, e.key.keysym.sym == SDLK_RIGHT );
+                player.movePieceHorizontally( e.key.keysym.sym == SDLK_RIGHT );
                 break;
             
             //Rotates clockwise
@@ -64,16 +47,56 @@ void handlingKeyPress( SDL_Event &e, PlayBoard &pb, Tetrimino &tetr, Tetrimino &
             case SDLK_x:
             //Rotates counterclockwise
             case SDLK_z:
-                tetr.rotatePiece( pb, e.key.keysym.sym != SDLK_z );
+                player.rotatePiece( e.key.keysym.sym != SDLK_z );
                 break;
             case SDLK_c:
-                holdPiece( tetr, hold, holdable );
+                player.swapHoldPiece();
                 break;
         }
     }
 }
 
-// void ingameProgress()
-// {
+void ingameProgress()
+{
+    //Initialize game & piece bag;
+    Player player;
+    bool gameOver = false;
+    SDL_Event ingameEvent;
+    vector<Tetromino> Tqueue;
+    while ( !gameOver )
+    {
+        clearScreen();
+        if ( !gameOver && player.tetr.getType() == 0 )
+        {
+            generateTetromino( Tqueue );
 
-// }
+            player.pullNewTetromino( Tqueue );
+            Tqueue.erase( Tqueue.begin() );
+            if ( player.checkCollision( player.tetr ) ) {
+                gameOver = true;
+            }
+        }
+        
+        player.gravityPull();
+
+        //Handle events
+        while ( SDL_PollEvent(&ingameEvent) != 0 ) 
+        {
+            //Quitting game event
+            if (  ingameEvent.type == SDL_QUIT )
+            {
+                gameOver = true;
+                break;
+            }
+
+            if ( !gameOver ) handlingKeyPress( ingameEvent, player );
+        }
+        renderFrame( player, Tqueue );
+    }
+}
+
+void gameManager()
+{
+    enum gameState {MAIN_MENU, SOLO_MENU, MULTI_MENU, SETTINGS, QUIT};
+
+}

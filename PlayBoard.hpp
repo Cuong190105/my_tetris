@@ -7,7 +7,7 @@ const int WIDTH_BY_TILE = 10;
 const int HEIGHT_BY_TILE = 23;
 const int TILE_WIDTH = 30;
 
-//3 rows at the top of the board are hidden, at which new tetrimino is spawned.
+//3 rows at the top of the board are hidden, at which new tetromino is spawned.
 const int HIDDEN_ROW = 3;
 
 class PlayBoard {
@@ -18,13 +18,9 @@ class PlayBoard {
 
         //A matrix to store all tiles placed on the board
         vector<vector<int>> boardState;
-
-        //Score earned, lines cleared and current level on this board
-        //Current level: Indicates tetrimino's falling speed. Normally, level get +1 for every 10 lines cleared.
-        int score, line, level;
     public:
         //Play Board Constructor
-        PlayBoard( int _level = 1 );
+        PlayBoard();
 
         //Destructor
         ~PlayBoard();
@@ -35,15 +31,6 @@ class PlayBoard {
         //Gets the height of the board
         int getHeight() const;
 
-        //Gets current board's score
-        int getScore() const;
-
-        //Gets current board's lines cleared
-        int getLines() const;
-
-        //Gets current board's level
-        int getLevel() const;
-        
         /**
          * Gets the state of a cell given its coordinate
          * \return State of the corresponding cell. -1 if the coordinate is outside the board
@@ -57,9 +44,9 @@ class PlayBoard {
          * Clears all completed rows from row lowerRow to row upperRow
          * \return number of cleared rows
          */
-        int clearCompletedRow( int upperRow, int lowerRow );
+        int countCompletedRow( int upperRow, int lowerRow );
 
-        //Updates board's state & statistic (score/line cleared) whenever a tetrimino locks in
+        //Updates board's state & statistic (score/line cleared) whenever a tetromino locks in
         void updateBoard( int upperRow = HEIGHT_BY_TILE - 1, int lowerRow = 0 );
 
 };

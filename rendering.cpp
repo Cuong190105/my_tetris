@@ -60,7 +60,7 @@ void renderBoard( const PlayBoard &pb )
     }
 }
 
-void renderCurrentTetrimino( const PlayBoard& pb, const Tetrimino& tetr )
+void renderCurrentTetromino( const PlayBoard& pb, const Tetromino& tetr, int ghostRow )
 {
     if ( tetr.getType() )
     {
@@ -81,7 +81,7 @@ void renderCurrentTetrimino( const PlayBoard& pb, const Tetrimino& tetr )
                                             &tileSpriteClips[ tetr.getCellState( row, col ) ]);
                     
                     //Renders this tile's ghost.
-                    int ghostOffsetY = ( tetr.getRow() - tetr.getGhostRow( pb ) ) * TILE_WIDTH;
+                    int ghostOffsetY = ( tetr.getRow() - ghostRow ) * TILE_WIDTH;
                     tileSpriteSheet.render( tile_x, tile_y + ghostOffsetY, 
                                             TILE_WIDTH, TILE_WIDTH, &tileSpriteClips[ 0 ]);
                 }
@@ -90,13 +90,13 @@ void renderCurrentTetrimino( const PlayBoard& pb, const Tetrimino& tetr )
     }
 }
 
-void renderPreviewTetrimino( int x, int y, const Tetrimino &tetr )
+void renderPreviewTetromino( int x, int y, const Tetromino &tetr )
 {
     //Dimensions of a preview box.
     const int BOX_WIDTH = TILE_WIDTH * 3;
     const int BOX_HEIGHT = TILE_WIDTH * 2;
     const int PREVIEW_TILE_WIDTH = TILE_WIDTH * 2 / 3;
-    //Adjusts Y to center the tetrimino in preview box, offsetX is always half the container's dimension. 
+    //Adjusts Y to center the tetromino in preview box, offsetX is always half the container's dimension. 
     int offsetX, offsetY;
 
     //Center point of the preview box.
@@ -117,7 +117,7 @@ void renderPreviewTetrimino( int x, int y, const Tetrimino &tetr )
                                         &tileSpriteClips[ tetr.getCellState( row, col ) ] );
 }
 
-void renderTetriminoQueue( const PlayBoard &pb, const vector<Tetrimino>& Tqueue )
+void renderTetrominoQueue( const PlayBoard &pb, const vector<Tetromino>& Tqueue )
 {
     //padding between queue and playfield
     const int PADDING = TILE_WIDTH * 2 / 3;
@@ -126,22 +126,22 @@ void renderTetriminoQueue( const PlayBoard &pb, const vector<Tetrimino>& Tqueue 
     const int TOP_LEFT_X = ( WINDOW_WIDTH + pb.getWidth() ) / 2 + PADDING;
     const int TOP_LEFT_Y = ( WINDOW_HEIGHT - pb.getHeight() ) / 2;
     
-    //Number of preview boxes. A queue can contain up to 5 tetriminos at a time.
+    //Number of preview boxes. A queue can contain up to 5 tetrominos at a time.
     const int BOX_NUMBER = 5;
     const int BOX_HEIGHT = TILE_WIDTH * 2;
     
     for ( int i = 0; i < BOX_NUMBER; i++ )
     {
-        renderPreviewTetrimino( TOP_LEFT_X, TOP_LEFT_Y + i * BOX_HEIGHT, Tqueue[i] );
+        renderPreviewTetromino( TOP_LEFT_X, TOP_LEFT_Y + i * BOX_HEIGHT, Tqueue[i] );
     }
 }
 
-void renderHeldTetrimino( const PlayBoard &pb, const Tetrimino &hold )
+void renderHeldTetromino( const PlayBoard &pb, const Tetromino &hold )
 {
     if ( hold.getType() ) {
         const int TOP_LEFT_X = ( WINDOW_WIDTH - pb.getWidth() ) / 2 - ( TILE_WIDTH * 4 );
         const int TOP_LEFT_Y = ( WINDOW_HEIGHT - pb.getHeight() ) / 2;
-        renderPreviewTetrimino( TOP_LEFT_X, TOP_LEFT_Y, hold );
+        renderPreviewTetromino( TOP_LEFT_X, TOP_LEFT_Y, hold );
     }
 }
 
@@ -151,7 +151,7 @@ void renderText( string text, int x, int y, bool isBold, bool isRightAligned, do
     textTexture.render( x - isRightAligned * textTexture.getWidth() * scale, y, textTexture.getWidth() * scale, textTexture.getHeight() * scale );
 }
 
-void renderStatistics( const PlayBoard &pb )
+void renderStatistics( const PlayBoard &pb, const int stat[] )
 {
     //Text box's structure:
     //-----LINE_SPACING-----
@@ -183,19 +183,19 @@ void renderStatistics( const PlayBoard &pb )
 
     //Display line cleared
     renderText( "LINES", LEFT_X, BOTTOM_Y + TITLE_Y - BOX_HEIGHT, false, true );
-    renderText( to_string( pb.getLines() ), LEFT_X, BOTTOM_Y + PRIMARY_TEXT_Y - BOX_HEIGHT, true, true, PRIMARY_TEXT_SCALE ); 
+    renderText( to_string( stat[0] ), LEFT_X, BOTTOM_Y + PRIMARY_TEXT_Y - BOX_HEIGHT, true, true, PRIMARY_TEXT_SCALE ); 
 
     //Display level speed
     renderText( "LV SPEED", LEFT_X, BOTTOM_Y + TITLE_Y - ( BOX_HEIGHT * 2 ), false, true );
-    renderText( to_string( pb.getLevel() ), LEFT_X, BOTTOM_Y + PRIMARY_TEXT_Y - ( BOX_HEIGHT * 2 ), true, true, PRIMARY_TEXT_SCALE ); 
+    renderText( to_string( stat[1] ), LEFT_X, BOTTOM_Y + PRIMARY_TEXT_Y - ( BOX_HEIGHT * 2 ), true, true, PRIMARY_TEXT_SCALE ); 
 
     //Display score
     renderText( "SCORE", RIGHT_X, BOTTOM_Y + TITLE_Y - BOX_HEIGHT, false, false );
-    renderText( to_string( pb.getScore() ), RIGHT_X, BOTTOM_Y + PRIMARY_TEXT_Y - BOX_HEIGHT, true, false, PRIMARY_TEXT_SCALE ); 
+    renderText( to_string( stat[2] ), RIGHT_X, BOTTOM_Y + PRIMARY_TEXT_Y - BOX_HEIGHT, true, false, PRIMARY_TEXT_SCALE ); 
     
     // Display time
-    renderText( "TIME", RIGHT_X, BOTTOM_Y + TITLE_Y - ( BOX_HEIGHT * 2 ), false, false );
-    renderText( to_string( pb.getLevel() ), RIGHT_X, BOTTOM_Y + PRIMARY_TEXT_Y - ( BOX_HEIGHT * 2 ), true, false, PRIMARY_TEXT_SCALE ); 
+    // renderText( "TIME", RIGHT_X, BOTTOM_Y + TITLE_Y - ( BOX_HEIGHT * 2 ), false, false );
+    // renderText( to_string( pb.getLevel() ), RIGHT_X, BOTTOM_Y + PRIMARY_TEXT_Y - ( BOX_HEIGHT * 2 ), true, false, PRIMARY_TEXT_SCALE ); 
 
 }
 
@@ -205,15 +205,16 @@ void clearScreen()
     SDL_RenderClear( renderer );
 }
 
-void renderFrame( const PlayBoard &pb, const Tetrimino& tetr, const vector<Tetrimino> &Tqueue, const Tetrimino &hold )
+void renderFrame( const Player& player, const vector<Tetromino> &Tqueue )
 {
     //Update screen
     bgImage.render();
-    renderBoard( pb );
-    renderTetriminoQueue ( pb, Tqueue );
-    renderCurrentTetrimino( pb, tetr );
-    renderHeldTetrimino( pb, hold );
-    renderStatistics( pb );
+    renderBoard( player.pb );
+    renderTetrominoQueue ( player.pb, Tqueue );
+    renderCurrentTetromino( player.pb, player.tetr, player.getGhostRow() );
+    renderHeldTetromino( player.pb, player.hold );
+    int stat[] = { player.line, player.level, player.score };
+    renderStatistics( player.pb, stat );
     SDL_RenderPresent( renderer );
 }
 
