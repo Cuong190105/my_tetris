@@ -145,9 +145,9 @@ void renderHeldTetromino( const PlayBoard &pb, const Tetromino &hold )
     }
 }
 
-void renderText( string text, int x, int y, bool isBold, bool isRightAligned, double scale = 1 )
+void renderText( string text, int x, int y, bool isBold, bool isRightAligned, double scale, SDL_Color color )
 {
-    textTexture.loadText( text, ( isBold ? fontBold : fontRegular ) );
+    textTexture.loadText( text, ( isBold ? fontBold : fontRegular ), color );
     textTexture.render( x - isRightAligned * textTexture.getWidth() * scale, y, textTexture.getWidth() * scale, textTexture.getHeight() * scale );
 }
 
@@ -218,6 +218,64 @@ void renderFrame( const Player& player, const vector<Tetromino> &Tqueue )
     SDL_RenderPresent( renderer );
 }
 
+float alpha = 255;
+float f;
+//Interval measured in frames
+const float CHANGE_OPAQUE_INTERVAL = 2;
+void renderMenuBackground()
+{
+    if ( alpha == 0 ) f = 1 / CHANGE_OPAQUE_INTERVAL;
+    else if ( alpha >= 150) f = -1 / CHANGE_OPAQUE_INTERVAL;
+    alpha += f;
+    menuBackground.render();
+    SDL_Rect overlay { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
+    SDL_SetRenderDrawColor( renderer, 0, 0, 0, (int)alpha);
+    SDL_RenderFillRect( renderer, &overlay );
+}
+
+SDL_Rect buttonBox[BUTTONS];
+int buttonHighlightState[BUTTONS];
+
+void renderMainMenuButton( int mouse_x, int mouse_y, int &activeButton )
+{
+    const int MIN_STATE = 0;
+    const int MAX_STATE = 10;
+    const string buttonText[] = { "SINGLEPLAYER", "MULTIPLAYER", "SETTINGS", "QUIT" };
+    if ( mouse_x >= BUTTON_X && mouse_x <= BUTTON_X + BUTTON_WIDTH )
+    {
+        for ( int i = 0; i < BUTTONS; i++ )
+        {
+            if ( mouse_y >= buttonBox[i].y && mouse_y <= buttonBox[i].y + BUTTON_HEIGHT )
+            {
+                activeButton = i;
+                break;
+            }
+            else activeButton = -1;
+        }
+    }
+    else activeButton = -1;
+
+    for ( int i = 0; i < BUTTONS; i++ )
+    {
+        if ( i == activeButton )
+        {
+            if ( buttonHighlightState[i] < MAX_STATE ) buttonHighlightState[i] ++;
+        }
+        else if ( buttonHighlightState[i] > MIN_STATE )
+        {
+            buttonHighlightState[i] --;
+        }
+        int alpha_val = 255 * buttonHighlightState[i] / MAX_STATE;
+        SDL_SetRenderDrawColor( renderer, 255, 255, 255, alpha_val);
+        SDL_RenderFillRect( renderer, &buttonBox[i] );
+
+        int w, h;
+        TTF_SizeText( fontBold, buttonText[i].c_str(), &w, &h);
+        SDL_Color color { 255 - alpha_val, 255 - alpha_val, 255 - alpha_val };
+        renderText( buttonText[i], buttonBox[i].x + TILE_WIDTH, buttonBox[i].y + TILE_WIDTH/2, true, false, TILE_WIDTH * 2.f / h, color );
+    }
+}
+
 bool init()
 {
     //Initialization status flag
@@ -231,6 +289,9 @@ bool init()
     }
     else
     {
+        //Set hint
+        SDL_SetHint( SDL_HINT_RENDER_SCALE_QUALITY, "1" );
+
         //Create game window
         game_window = SDL_CreateWindow( "Test", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_SHOWN );
         if ( game_window == NULL )
@@ -241,7 +302,7 @@ bool init()
         else 
         {
             //Create renderer
-            renderer = SDL_CreateRenderer( game_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC );
+            renderer = SDL_CreateRenderer( game_window, -1, SDL_RENDERER_ACCELERATED );
             if ( renderer == NULL )
             {
                 cout << "Failed to create renderer" << endl;
@@ -249,6 +310,7 @@ bool init()
             }
             else
             {
+                SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
                 SDL_SetRenderDrawColor( renderer, 0x00, 0x00, 0x00, 0xFF );
                 int imgFlags = IMG_INIT_PNG;
                 if( !( IMG_Init( imgFlags ) & imgFlags ) )
@@ -268,12 +330,34 @@ bool init()
     return success;
 }
 
+void loadMainMenuElements()
+{
+    //Loads main menu background
+    const string MENU_BACKGROUND_PATH = "src/media/img/menu_bg.png";
+    if ( !menuBackground.loadFromFile( MENU_BACKGROUND_PATH ) )
+    {
+        cout << "Failed to load menu background" << endl;
+    }
+
+    //Loads button hit boxes & initialize highlighting states
+    for ( int i = 0; i < BUTTONS; i++ )
+    {
+        buttonBox[i].x = BUTTON_X;
+        buttonBox[i].y = SOLO_BUTTON_Y + ( BUTTON_HEIGHT + BUTTON_PADDING ) * i;
+        buttonBox[i].w = BUTTON_WIDTH;
+        buttonBox[i].h = BUTTON_HEIGHT;
+        buttonHighlightState[i] = 0;
+    }
+}
 
 void loadMedia()
 {
-    const string TILE_SPRITE_SHEET_DIR = "Tile_sheet.png";
-    const string AUDIO_DIR = "/Tile_sheets.png";
-    if ( !tileSpriteSheet.loadFromFile( TILE_SPRITE_SHEET_DIR ) )
+    loadMainMenuElements();
+    const string TILE_SPRITE_SHEET_PATH = "src/media/img/Tile_sheet.png";
+    const string AUDIO_PATH = "/Tile_sheets.png";
+
+    //Loads sprite sheet
+    if ( !tileSpriteSheet.loadFromFile( TILE_SPRITE_SHEET_PATH ) )
     {
         cout << "Failed to load Tile sprite sheet." << endl;
     }
@@ -292,12 +376,15 @@ void loadMedia()
 		    tileSpriteClips[ i + 4 ].h = 300;
         }
     }
-    fontBold = TTF_OpenFont("gameFontBold.ttf", 30);
+
+
+    //Load font
+    fontBold = TTF_OpenFont("src/media/fonts/gameFontBold.ttf", 30);
     if ( fontBold == NULL )
     {
         cout << "Failed to load font." << endl;
     }
-    fontRegular = TTF_OpenFont("gameFontRegular.ttf", 30);
+    fontRegular = TTF_OpenFont("src/media/fonts/gameFontRegular.ttf", 30);
     if ( fontRegular == NULL )
     {
         cout << "Failed to load font." << endl;
@@ -307,7 +394,7 @@ void loadMedia()
 void loadRandomBackground()
 {
     int select = rand() % 10 + 1;
-    string bgFile = "src/bg/bg" + to_string(select) + ".png";
+    string bgFile = "src/media/img/bg" + to_string(select) + ".png";
     if ( !bgImage.loadFromFile( bgFile ) )
     {
         cout << "Failed to load background." << endl;
@@ -320,17 +407,20 @@ void close()
     tileSpriteSheet.free();
     textTexture.free();
     bgImage.free();
+    menuBackground.free();
     //Free font
     TTF_CloseFont( fontBold );
     TTF_CloseFont( fontRegular );
     fontBold = NULL;
     fontRegular = NULL;
 
+
     //Destroy window
     SDL_DestroyRenderer( renderer );
+    renderer = NULL;
+
     SDL_DestroyWindow( game_window );
     game_window = NULL;
-    renderer = NULL;
 
     //Quit SDL
     TTF_Quit();

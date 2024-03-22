@@ -1,10 +1,11 @@
 #include <algorithm>
 #include <iostream>
-#include <SDL.h>
 #include <random>
 #include "logic.hpp"
-#include "rendering.hpp"
+
 using namespace std;
+
+SDL_Event event;
 
 void generateTetromino( vector<Tetromino> &Tqueue )
 {
@@ -95,8 +96,58 @@ void ingameProgress()
     }
 }
 
-void gameManager()
+void mainMenu( int &scene, int &activeButton )
 {
-    enum gameState {MAIN_MENU, SOLO_MENU, MULTI_MENU, SETTINGS, QUIT};
+    renderMenuBackground();
+    // renderFloatingTetromino();
+    // renderGameTitle();
 
+    int mouse_x, mouse_y;
+    SDL_GetMouseState( &mouse_x, &mouse_y );
+    renderMainMenuButton( mouse_x, mouse_y, activeButton );
+}
+
+void gameManager( int &scene )
+{
+    //Current game scene
+    int activeButton = -1;
+    switch(scene)
+    {
+        case MAIN_MENU:
+            mainMenu( scene, activeButton );
+            break;
+        case SOLO_MENU:
+            // soloMenu( scene );
+            break;
+        case MULTI_MENU:
+            // multiMenu( scene );
+            break;
+        case SETTINGS:
+            // settingMenu( scene );
+            break;
+        case QUIT:
+            break;
+    }
+
+    //Handling input events
+    while( SDL_PollEvent( &event ) > 0 && scene != QUIT )
+    {
+        switch( event.type )
+        {
+            case SDL_QUIT:
+                scene = QUIT;
+                break;
+            case SDL_MOUSEBUTTONUP:
+                handlingMouseClick( scene, activeButton );
+                break;
+            case SDL_KEYDOWN:
+                // handlingKeyPress
+                break;
+        }
+    }
+}
+
+void handlingMouseClick( int &scene, int activeButton )
+{
+    if ( activeButton != -1 ) scene = activeButton + 1;
 }

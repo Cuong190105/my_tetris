@@ -25,7 +25,7 @@ class Texture
         void free();
 
         //Loads text
-        bool loadText( string text, TTF_Font *font);
+        bool loadText( string text, TTF_Font *font, SDL_Color color = {255, 255, 255});
 
         //Loads texture from file
         bool loadFromFile( string path );
@@ -50,4 +50,5 @@ extern SDL_Rect tileSpriteClips[8];
 extern Texture tileSpriteSheet;
 extern Texture textTexture;
 extern Texture bgImage;
+extern Texture menuBackground;
 #endif

@@ -363,7 +363,7 @@ void Player::updateScore( int lineCleared, int delta )
     if ( combo > 0 ) delta += combo * 50;
     score += delta * level;
     line += lineCleared;
-    level = line / 10 + 1;
+    level = min(line / 10 + 1, 20);
 }
 
 void Player::swapHoldPiece()

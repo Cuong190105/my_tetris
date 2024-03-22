@@ -11,8 +11,12 @@ TTF_Font *fontBold;
 TTF_Font *fontRegular;
 //Used for rendering text
 Texture textTexture;
-//Background image
+//Ingame background
 Texture bgImage;
+
+//Menu background texture
+Texture menuBackground;
+
 
 SDL_Renderer *renderer = NULL;
 
@@ -39,11 +43,10 @@ void Texture::free()
     }
 }
 
-bool Texture::loadText( string text, TTF_Font *font )
+bool Texture::loadText( string text, TTF_Font *font, SDL_Color color )
 {
 	free();
-	SDL_Color color { 0xFF, 0xFF, 0xFF };
-	SDL_Surface *textSurface = TTF_RenderText_Solid(font, text.c_str(), color);
+	SDL_Surface *textSurface = TTF_RenderText_Blended(font, text.c_str(), color );
 
 	if( textSurface == NULL )
     {
