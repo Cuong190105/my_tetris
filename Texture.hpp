@@ -37,7 +37,7 @@ class Texture
          * \param h height of the destination frame
          * \param clip a pointer to a SDL_Rect indicating part of the texture being copied, leave NULL to copy the whole texture 
          */
-        void render( int x = 0, int y = 0, int w = WINDOW_WIDTH, int h = WINDOW_HEIGHT, SDL_Rect* clip = NULL );
+        void render( int x = 0, int y = 0, int w = WINDOW_WIDTH, int h = WINDOW_HEIGHT, SDL_Rect* clip = NULL, int angle = 0 );
 
         //Returns width
         int getWidth();

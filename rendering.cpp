@@ -218,19 +218,24 @@ void renderFrame( const Player& player, const vector<Tetromino> &Tqueue )
     SDL_RenderPresent( renderer );
 }
 
-float alpha = 255;
-float f;
 //Interval measured in frames
-const float CHANGE_OPAQUE_INTERVAL = 2;
-void renderMenuBackground()
+const float HALF_BLINK_DURATION = 5000;
+Uint32 blinkMark = SDL_GetTicks();
+void renderMenuBackground( bool stop )
 {
-    if ( alpha == 0 ) f = 1 / CHANGE_OPAQUE_INTERVAL;
-    else if ( alpha >= 150) f = -1 / CHANGE_OPAQUE_INTERVAL;
-    alpha += f;
+    static short alpha = 255;
     menuBackground.render();
     SDL_Rect overlay { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
-    SDL_SetRenderDrawColor( renderer, 0, 0, 0, (int)alpha);
+    SDL_SetRenderDrawColor( renderer, 0, 0, 0, alpha );
     SDL_RenderFillRect( renderer, &overlay );
+    if ( SDL_GetTicks() - blinkMark >= HALF_BLINK_DURATION / 255 )
+    {
+        short f;
+        if ( alpha == 0 ) f = 1;
+        else if ( alpha >= 200) f = -1;
+        alpha += f;
+    }
+    if ( stop ) alpha = 255;
 }
 
 SDL_Rect buttonBox[BUTTONS];
@@ -276,6 +281,102 @@ void renderMainMenuButton( int mouse_x, int mouse_y, int &activeButton )
     }
 }
 
+vector<int> floatSpd, spinAngle;
+vector<pair<int, int>> position;
+vector<bool> isVertical;
+vector<float> scale;
+Uint32 spawnMark, waitUntilNextSpawn;
+void renderFloatingTetromino( vector<Tetromino> &floating )
+{
+    if ( floatSpd.size() == 0 || ( floatSpd.size() <= 8 && SDL_GetTicks() - spawnMark > waitUntilNextSpawn ) )
+    {
+        floatSpd.push_back( ( rand() % 4 + 2 ) * ( rand() % 2 * 2 - 1 ));
+        waitUntilNextSpawn = rand() % 2000 + 1000;
+        isVertical.push_back( rand() % 2 );
+        if ( isVertical[isVertical.size() - 1] )
+        {
+            int direction =  2 * ( floatSpd[floatSpd.size() - 1] < 0 ) - 1;
+            position.push_back( make_pair(  rand() % ( TILE_WIDTH * 56 ) + TILE_WIDTH * 4,
+                                            floatSpd[floatSpd.size() - 1] > 0 ? TILE_WIDTH * -4 : WINDOW_HEIGHT ) );
+        }
+        else
+        {
+            position.push_back( make_pair(  floatSpd[floatSpd.size() - 1] > 0 ? TILE_WIDTH * -4 : WINDOW_WIDTH,
+                                            rand() % ( TILE_WIDTH * 24 ) + TILE_WIDTH * 4 ) );
+        }
+        scale.push_back((rand() % 11) / 10.f + 1);
+        spinAngle.push_back( 0 );
+        spawnMark = SDL_GetTicks();
+    }
+    for ( int i = 0; i < floatSpd.size(); i++ )
+    {
+        if ( ( isVertical[i] && ( position[i].second > WINDOW_HEIGHT || position[i].second < TILE_WIDTH * -4 ) ) ||
+             ( !isVertical[i] && (position[i].first > WINDOW_WIDTH || position[i].first < TILE_WIDTH * -4 ) ) )
+        {
+            floatSpd.erase( floatSpd.begin() + i );
+            spinAngle.erase( spinAngle.begin() + i);
+            position.erase( position.begin() + i);
+            isVertical.erase( isVertical.begin() + i );
+            floating.erase( floating.begin() + i );
+            scale.erase( scale.begin() + i );
+        }
+        else
+        {
+            SDL_Texture *targetTexture = SDL_CreateTexture( renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, TILE_WIDTH * 3, TILE_WIDTH * 2 );
+            SDL_SetRenderTarget( renderer, targetTexture );
+            SDL_SetTextureBlendMode( targetTexture, SDL_BLENDMODE_BLEND);
+            SDL_SetRenderDrawColor( renderer, 0, 0, 0, 0 );
+            SDL_RenderClear( renderer );
+            renderPreviewTetromino( 0, 0, floating[i] );
+            SDL_SetRenderTarget( renderer, NULL );
+            SDL_Rect rect { position[i].first, position[i].second, TILE_WIDTH * 3 * scale[i], TILE_WIDTH * 2 * scale[i] };
+            SDL_RenderCopyEx( renderer, targetTexture, NULL, &rect, spinAngle[i], NULL, SDL_FLIP_NONE );
+            SDL_DestroyTexture( targetTexture );
+            targetTexture = NULL;
+            if ( isVertical[i] ) position[i].second += floatSpd[i];
+            else position[i].first += floatSpd[i];
+            spinAngle[i] ++;
+            if ( spinAngle[i] == 360 ) spinAngle[i] = 0;
+        }
+    }
+}
+
+void renderGameTitle()
+{
+    Texture title;
+    title.loadFromFile("src/media/img/game_title.png");
+    title.render( TILE_WIDTH * 5 / 2, TILE_WIDTH * 4, TILE_WIDTH * 25, TILE_WIDTH * 14 );
+}
+
+const int TRANSITION_DURATION = 2500;
+Uint32 transitionMark = SDL_GetTicks();
+
+bool renderTransition( bool transIn )
+{
+    static int transitionAlpha = 255;
+    SDL_Rect overlay { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
+    SDL_SetRenderDrawColor( renderer, 0, 0, 0, transitionAlpha );
+    SDL_RenderFillRect( renderer, &overlay );
+    if ( SDL_GetTicks() - transitionMark >= TRANSITION_DURATION / 255 )
+    {
+        transitionMark = SDL_GetTicks();
+        if ( transIn && transitionAlpha != 0 )
+        {
+            transitionAlpha--;
+        }
+        else if ( !transIn && transitionAlpha != 255)
+        {
+            transitionAlpha++;
+        }
+        else 
+        {
+            if ( !transIn ) renderMenuBackground( true );
+            return true;
+        }
+    }
+    return false;
+}
+
 bool init()
 {
     //Initialization status flag
@@ -302,7 +403,7 @@ bool init()
         else 
         {
             //Create renderer
-            renderer = SDL_CreateRenderer( game_window, -1, SDL_RENDERER_ACCELERATED );
+            renderer = SDL_CreateRenderer( game_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE );
             if ( renderer == NULL )
             {
                 cout << "Failed to create renderer" << endl;

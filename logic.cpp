@@ -96,12 +96,13 @@ void ingameProgress()
     }
 }
 
+vector<Tetromino> floating;
 void mainMenu( int &scene, int &activeButton )
 {
     renderMenuBackground();
-    // renderFloatingTetromino();
-    // renderGameTitle();
-
+    generateTetromino( floating );
+    renderFloatingTetromino( floating );
+    renderGameTitle();
     int mouse_x, mouse_y;
     SDL_GetMouseState( &mouse_x, &mouse_y );
     renderMainMenuButton( mouse_x, mouse_y, activeButton );
@@ -111,10 +112,12 @@ void gameManager( int &scene )
 {
     //Current game scene
     int activeButton = -1;
+    bool doneTransIn = false;
     switch(scene)
     {
         case MAIN_MENU:
             mainMenu( scene, activeButton );
+            if ( !doneTransIn ) doneTransIn = renderTransition( true );
             break;
         case SOLO_MENU:
             // soloMenu( scene );

@@ -110,7 +110,7 @@ bool Texture::loadFromFile( string path )
 	return texture != NULL;
 }
 
-void Texture::render( int x, int y, int w, int h, SDL_Rect *clip )
+void Texture::render( int x, int y, int w, int h, SDL_Rect *clip, int angle )
 {
     //Set rendering space and render to screen
 	SDL_Rect renderQuad = { x, y, w, h };
@@ -123,7 +123,9 @@ void Texture::render( int x, int y, int w, int h, SDL_Rect *clip )
 	// }
 
 	//Render to screen
-	SDL_RenderCopy( renderer, texture, clip, &renderQuad );
+    if ( angle != 0 )
+	    SDL_RenderCopyEx( renderer, texture, clip, &renderQuad, angle, NULL, SDL_FLIP_NONE );
+    else SDL_RenderCopy( renderer, texture, clip, &renderQuad );
 }
 
 int Texture::getWidth()

@@ -53,11 +53,15 @@ const int BUTTON_WIDTH = TILE_WIDTH * 16;
 const int BUTTON_PADDING = TILE_WIDTH;
 
 //Renders main menu screen
-void renderMenuBackground();
+void renderMenuBackground( bool stop = false );
 
 void renderMainMenuButton( int mouse_x, int mouse_y, int &activeButton );
 
+void renderFloatingTetromino( vector<Tetromino> &floating );
 
+void renderGameTitle();
+
+bool renderTransition( bool transIn );
 //--------------------------INIT & LOAD--------------------------
 //Initializes SDL system, game window and renderer
 bool init();
