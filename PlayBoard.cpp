@@ -7,21 +7,9 @@ using namespace std;
 PlayBoard::PlayBoard()
 {
     boardState = vector<vector<int>>( HEIGHT_BY_TILE, vector<int>( WIDTH_BY_TILE, 0 ) );
-    w = TILE_WIDTH * WIDTH_BY_TILE;
-    h = TILE_WIDTH * (HEIGHT_BY_TILE - HIDDEN_ROW);
 }
 
 PlayBoard::~PlayBoard() {}
-
-int PlayBoard::getWidth() const
-{
-    return w;
-}
-
-int PlayBoard::getHeight() const
-{
-    return h;
-}
 
 void PlayBoard::modifyCell( int row, int col, int val )
 {

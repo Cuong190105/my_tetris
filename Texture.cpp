@@ -1,24 +1,27 @@
 #include "Texture.hpp"
 #include <SDL_image.h>
 using namespace std;
-
 //Stores the tile sprite sheet
 Texture tileSpriteSheet;
+
 //Sprite sheet clipping rectangles
 SDL_Rect tileSpriteClips[8];
+
 //Stores font
 TTF_Font *fontBold;
 TTF_Font *fontRegular;
+
 //Used for rendering text
 Texture textTexture;
+
 //Ingame background
 Texture bgImage;
 
 //Menu background texture
 Texture menuBackground;
 
-
 SDL_Renderer *renderer = NULL;
+
 
 Texture::Texture()
 {
@@ -105,9 +108,19 @@ bool Texture::loadFromFile( string path )
 
 		//Get rid of old loaded surface
 		SDL_FreeSurface( loadedSurface );
-    } 
+    }
     texture = newTexture;
 	return texture != NULL;
+}
+
+void Texture::setColorMod( Uint8 r, Uint8 g, Uint8 b )
+{
+    SDL_SetTextureColorMod( texture, r, g, b );
+}
+
+void Texture::setAlphaMod( Uint8 a )
+{
+    SDL_SetTextureAlphaMod( texture, a );
 }
 
 void Texture::render( int x, int y, int w, int h, SDL_Rect *clip, int angle )

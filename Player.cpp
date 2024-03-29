@@ -1,40 +1,45 @@
 #include "Player.hpp"
+
 #include <cmath>
 #include <iostream>
 using namespace std;
 
 enum Action {ROTATE, MOVE_LR, DROP};
 
-Player::Player( int _level )
+Player::Player( int _level, int _x, int _y )
 {
     pb = PlayBoard();
     tetr = Tetromino();
     hold = Tetromino();
-    bool hold = false;
+    holdLock = false;
     score = 0;
     line = 0;
     level = _level;
     combo = -1;
     b2b = -1;
     lastMove = DROP;
+    movesBeforeLock = 0;
+    lowestRow = 21;
+    x = _x; y = _y;
 }
 
 Player::~Player() {}
 
-int Player::getScore()
-{
-    return score;
-}
+int Player::getScore() const { return score; }
+int Player::getLine() const { return line; }
 
-int Player::getLine()
-{
-    return line;
-}
+int Player::getLevel() const { return level; }
+void Player::setLevel( int _level ) { level = _level; }
 
-int Player::getLevel()
-{
-    return level;
-}
+void Player::terminateGame() { gameOver = true; }
+bool Player::isGameOver() { return gameOver; }
+
+
+void Player::setX( int _x ) { x = _x; }
+int Player::getX() const{ return x; }
+
+void Player::setY( int _y ) { y = _y; }
+int Player::getY() const { return y; }
 
 int Player::getGhostRow() const
 {
@@ -363,7 +368,6 @@ void Player::updateScore( int lineCleared, int delta )
     if ( combo > 0 ) delta += combo * 50;
     score += delta * level;
     line += lineCleared;
-    level = min(line / 10 + 1, 20);
 }
 
 void Player::swapHoldPiece()
@@ -379,3 +383,195 @@ void Player::swapHoldPiece()
     }
 }
 
+void Player::displayBoard()
+{
+    //Draw board background color
+    SDL_SetRenderDrawColor( renderer, 0, 0, 0, 0xFF );
+    SDL_Rect board { x, y, BOARD_WIDTH, BOARD_HEIGHT };
+    SDL_RenderFillRect( renderer, &board );
+
+    //Draw board gridlines
+    SDL_SetRenderDrawColor( renderer, 0x22, 0x22, 0x22, 0xFF );
+    for( int i = 1; i < WIDTH_BY_TILE; i++ )
+    {
+        SDL_RenderDrawLine( renderer, x + TILE_WIDTH * i, y, x + TILE_WIDTH * i, y + BOARD_HEIGHT );
+    }
+    for( int i = 1; i < HEIGHT_BY_TILE - HIDDEN_ROW; i++ )
+    {
+        SDL_RenderDrawLine( renderer, x, y + TILE_WIDTH * i, x + BOARD_WIDTH, y  + TILE_WIDTH * i );
+    }
+
+    //Draw board borders
+    SDL_SetRenderDrawColor( renderer, 0xFF, 0xFF, 0xFF, 0xFF );
+    for ( int i = -1; i < 2; i++ )
+    {
+        //Explain: 
+        //Use loop to draw many lines next to each other to create thick border
+        //Add abs(i) to round line ends
+
+        //Left border
+        SDL_RenderDrawLine( renderer, x + i - 2, y + abs(i), x + i - 2, y + BOARD_HEIGHT + i );
+        //Right border
+        SDL_RenderDrawLine( renderer, x + BOARD_WIDTH + i + 1, y + abs(i), x + BOARD_WIDTH + i + 1, y + BOARD_HEIGHT - i );
+        //Bottom border
+        SDL_RenderDrawLine( renderer, x + i, y + BOARD_HEIGHT + i + 1, x + BOARD_WIDTH - i, y + BOARD_HEIGHT + i + 1);
+    }
+
+    // Draw pieces on the board;
+    for ( int row = 0; row < HEIGHT_BY_TILE; row++ )
+    {
+        for ( int col = 0; col < WIDTH_BY_TILE; col++ )
+        {
+            int cellState = pb.getCellState( row, col );
+            if ( cellState > 0)
+            {
+                tileSpriteSheet.render( x + TILE_WIDTH * col, y + BOARD_HEIGHT - TILE_WIDTH * ( row + 1 ), TILE_WIDTH, TILE_WIDTH, &tileSpriteClips[ cellState ] );
+            }
+        }
+    }
+}
+
+void Player::displayCurrentTetromino()
+{
+    if ( tetr.getType() )
+    {
+        //Playfield's bottom left corner's position
+        const int BOTTOM_LEFT_X = x;
+        const int BOTTOM_LEFT_Y = y + BOARD_HEIGHT;
+
+        for ( int row = 0; row < tetr.getContainerSize(); row++ )
+        {
+            for ( int col = 0; col < tetr.getContainerSize(); col++ )
+            {
+                if ( tetr.getCellState( row, col ) > 0 )
+                {
+                    int tile_x = BOTTOM_LEFT_X + ( tetr.getCol() + col ) * TILE_WIDTH;
+                    int tile_y = BOTTOM_LEFT_Y - ( tetr.getRow() + row + 1) * TILE_WIDTH;
+                    tileSpriteSheet.render( tile_x, tile_y, 
+                                            TILE_WIDTH, TILE_WIDTH,
+                                            &tileSpriteClips[ tetr.getCellState( row, col ) ]);
+                    
+                    //Renders this tile's ghost.
+                    int ghostOffsetY = ( tetr.getRow() - getGhostRow() ) * TILE_WIDTH;
+                    tileSpriteSheet.render( tile_x, tile_y + ghostOffsetY, 
+                                            TILE_WIDTH, TILE_WIDTH, &tileSpriteClips[ 0 ]);
+                }
+            }
+        }
+    }
+}
+
+void Player::displayPreviewTetromino( int _x, int _y, const Tetromino &Ptetr )
+{
+        //Dimensions of a preview box.
+    const int BOX_WIDTH = TILE_WIDTH * 3;
+    const int BOX_HEIGHT = TILE_WIDTH * 2;
+    const int PREVIEW_TILE_WIDTH = TILE_WIDTH * 2 / 3;
+    //Adjusts Y to center the tetromino in preview box, offsetX is always half the container's dimension. 
+    int offsetX, offsetY;
+
+    //Center point of the preview box.
+    const int CENTER_X = BOX_WIDTH / 2 + _x;
+    const int CENTER_Y = BOX_HEIGHT / 2 + _y;
+
+    if ( Ptetr.getType() == I_PIECE )    offsetY = PREVIEW_TILE_WIDTH * 5 / 2;
+    else                                offsetY = PREVIEW_TILE_WIDTH * 2;
+
+    offsetX = Ptetr.getContainerSize() * PREVIEW_TILE_WIDTH / 2;
+
+    for ( int row = 0; row < Ptetr.getContainerSize(); row++ )
+        for ( int col = 0; col < Ptetr.getContainerSize(); col++ )
+            if ( Ptetr.getCellState( row, col ) != 0 )
+                tileSpriteSheet.render( CENTER_X - offsetX + col * PREVIEW_TILE_WIDTH,
+                                        CENTER_Y + offsetY - (row + 1) * PREVIEW_TILE_WIDTH,
+                                        PREVIEW_TILE_WIDTH, PREVIEW_TILE_WIDTH,
+                                        &tileSpriteClips[ Ptetr.getCellState( row, col ) ] );
+}
+
+void Player::displayTetrominoQueue( vector<Tetromino> &Tqueue, int previewPieces, int queuePosition )
+{
+    //padding between queue and playfield
+    const int PADDING = TILE_WIDTH * 2 / 3;
+
+    //Position of the queue container's top left corner
+    const int TOP_LEFT_X = x + BOARD_WIDTH + PADDING;
+    const int TOP_LEFT_Y = y;
+    
+    const int BOX_HEIGHT = TILE_WIDTH * 2;
+    
+    for ( int i = 0; i < min(previewPieces, (int)Tqueue.size()); i++ )
+    {
+        displayPreviewTetromino( TOP_LEFT_X, TOP_LEFT_Y + i * BOX_HEIGHT, Tqueue[ queuePosition + i ] );
+    }
+}
+
+void Player::displayHeldTetromino()
+{
+    if ( hold.getType() )
+    {
+        displayPreviewTetromino( x - TILE_WIDTH * 4, y, hold );
+    }
+}
+
+void Player::ingameProgress( const vector<Tetromino> &Tqueue, int &queuePosition, int &scene )
+{
+    //Initialize game & piece bag;
+    if ( !gameOver )
+    {   
+        if ( tetr.getType() == 0 )
+        {
+            pullNewTetromino( Tqueue );
+            queuePosition++;
+        }
+        if ( checkCollision( tetr ) ) gameOver = true;
+        gravityPull();
+
+        //Handle events
+        SDL_Event event;
+        while ( SDL_PollEvent(&event) != 0 ) 
+        {
+            //Quitting game event
+            if (  event.type == SDL_QUIT )
+            {
+                gameOver = true;
+                scene = QUIT;
+                break;
+            }
+
+            if ( !gameOver ) handlingKeyPress( event );
+        }
+    }
+}
+
+void Player::handlingKeyPress( SDL_Event &e)
+{
+    if ( e.type == SDL_KEYDOWN )
+    {
+        // cout << SDL_GetKeyName(e.key.keysym.sym) << endl;
+        switch( e.key.keysym.sym )
+        {
+            //Drops
+            case SDLK_DOWN:
+            case SDLK_SPACE:
+                dropPiece( e.key.keysym.sym == SDLK_SPACE );
+                break;
+            
+            //Moves left or right
+            case SDLK_LEFT:
+            case SDLK_RIGHT:
+                movePieceHorizontally( e.key.keysym.sym == SDLK_RIGHT );
+                break;
+            
+            //Rotates clockwise
+            case SDLK_UP:
+            case SDLK_x:
+            //Rotates counterclockwise
+            case SDLK_z:
+                rotatePiece( e.key.keysym.sym != SDLK_z );
+                break;
+            case SDLK_c:
+                swapHoldPiece();
+                break;
+        }
+    }
+}

@@ -4,154 +4,42 @@
 #include <cstdlib>
 using namespace std;
 
-SDL_Window *game_window = NULL;
+SDL_Window *game_window;
 
-void renderBoard( const PlayBoard &pb )
-{
-    //Store the max and min of x and y of a pixel in the playfield
-    const int LEFT_X = ( WINDOW_WIDTH - pb.getWidth() ) / 2;
-    const int RIGHT_X = LEFT_X + pb.getWidth();
-    const int TOP_Y = ( WINDOW_HEIGHT - pb.getHeight() ) / 2;
-    const int BOTTOM_Y = TOP_Y + pb.getHeight();
-
-    //Draw board background color
-    SDL_SetRenderDrawColor( renderer, 0, 0, 0, 0xFF );
-    SDL_Rect board { LEFT_X, TOP_Y , pb.getWidth(), pb.getHeight() };
-    SDL_RenderFillRect( renderer, &board );
-
-    //Draw board gridlines
-    SDL_SetRenderDrawColor( renderer, 0x22, 0x22, 0x22, 0xFF );
-    for( int i = 1; i < WIDTH_BY_TILE; i++ )
-    {
-        SDL_RenderDrawLine( renderer, LEFT_X + TILE_WIDTH * i, TOP_Y, LEFT_X + TILE_WIDTH * i, TOP_Y + pb.getHeight() );
-    }
-    for( int i = 1; i < HEIGHT_BY_TILE - HIDDEN_ROW; i++ )
-    {
-        SDL_RenderDrawLine( renderer, LEFT_X, TOP_Y + TILE_WIDTH * i, LEFT_X + pb.getWidth(), TOP_Y  + TILE_WIDTH * i );
-    }
-
-    //Draw board borders
-    SDL_SetRenderDrawColor( renderer, 0xFF, 0xFF, 0xFF, 0xFF );
-    for ( int i = -1; i < 2; i++ )
-    {
-        //Explain: 
-        //Use loop to draw many lines next to each other to create thick border
-        //Add abs(i) to round line ends
-
-        //Left border
-        SDL_RenderDrawLine( renderer, LEFT_X + i - 2, TOP_Y + abs(i), LEFT_X + i - 2, TOP_Y + pb.getHeight() + i );
-        //Right border
-        SDL_RenderDrawLine( renderer, LEFT_X + pb.getWidth() + i + 1, TOP_Y + abs(i), LEFT_X + pb.getWidth() + i + 1, TOP_Y + pb.getHeight() - i );
-        //Bottom border
-        SDL_RenderDrawLine( renderer, LEFT_X + i, TOP_Y + pb.getHeight() + i + 1, LEFT_X + pb.getWidth() - i, TOP_Y + pb.getHeight() + i + 1);
-    }
-
-    // Draw pieces on the board;
-    for ( int row = 0; row < HEIGHT_BY_TILE; row++ )
-    {
-        for ( int col = 0; col < WIDTH_BY_TILE; col++ )
-        {
-            int cellState = pb.getCellState( row, col );
-            if ( cellState > 0)
-            {
-                tileSpriteSheet.render( LEFT_X + TILE_WIDTH * col, BOTTOM_Y - TILE_WIDTH * ( row + 1 ), TILE_WIDTH, TILE_WIDTH, &tileSpriteClips[ cellState ] );
-            }
-        }
-    }
-}
-
-void renderCurrentTetromino( const PlayBoard& pb, const Tetromino& tetr, int ghostRow )
-{
-    if ( tetr.getType() )
-    {
-        //Playfield's bottom left corner's position
-        const int BOTTOM_LEFT_X = ( WINDOW_WIDTH - pb.getWidth() ) / 2;
-        const int BOTTOM_LEFT_Y = ( WINDOW_HEIGHT + pb.getHeight() ) / 2;
-
-        for ( int row = 0; row < tetr.getContainerSize(); row++ )
-        {
-            for ( int col = 0; col < tetr.getContainerSize(); col++ )
-            {
-                if ( tetr.getCellState( row, col ) > 0 )
-                {
-                    int tile_x = BOTTOM_LEFT_X + ( tetr.getCol() + col ) * TILE_WIDTH;
-                    int tile_y = BOTTOM_LEFT_Y - ( tetr.getRow() + row + 1) * TILE_WIDTH;
-                    tileSpriteSheet.render( tile_x, tile_y, 
-                                            TILE_WIDTH, TILE_WIDTH,
-                                            &tileSpriteClips[ tetr.getCellState( row, col ) ]);
-                    
-                    //Renders this tile's ghost.
-                    int ghostOffsetY = ( tetr.getRow() - ghostRow ) * TILE_WIDTH;
-                    tileSpriteSheet.render( tile_x, tile_y + ghostOffsetY, 
-                                            TILE_WIDTH, TILE_WIDTH, &tileSpriteClips[ 0 ]);
-                }
-            }
-        }
-    }
-}
-
-void renderPreviewTetromino( int x, int y, const Tetromino &tetr )
-{
-    //Dimensions of a preview box.
-    const int BOX_WIDTH = TILE_WIDTH * 3;
-    const int BOX_HEIGHT = TILE_WIDTH * 2;
-    const int PREVIEW_TILE_WIDTH = TILE_WIDTH * 2 / 3;
-    //Adjusts Y to center the tetromino in preview box, offsetX is always half the container's dimension. 
-    int offsetX, offsetY;
-
-    //Center point of the preview box.
-    const int CENTER_X = BOX_WIDTH / 2 + x;
-    const int CENTER_Y = BOX_HEIGHT / 2 + y;
-
-    if ( tetr.getType() == I_PIECE )    offsetY = PREVIEW_TILE_WIDTH * 5 / 2;
-    else                                offsetY = PREVIEW_TILE_WIDTH * 2;
-
-    offsetX = tetr.getContainerSize() * PREVIEW_TILE_WIDTH / 2;
-
-    for ( int row = 0; row < tetr.getContainerSize(); row++ )
-        for ( int col = 0; col < tetr.getContainerSize(); col++ )
-            if ( tetr.getCellState( row, col ) != 0 )
-                tileSpriteSheet.render( CENTER_X - offsetX + col * PREVIEW_TILE_WIDTH,
-                                        CENTER_Y + offsetY - (row + 1) * PREVIEW_TILE_WIDTH,
-                                        PREVIEW_TILE_WIDTH, PREVIEW_TILE_WIDTH,
-                                        &tileSpriteClips[ tetr.getCellState( row, col ) ] );
-}
-
-void renderTetrominoQueue( const PlayBoard &pb, const vector<Tetromino>& Tqueue )
-{
-    //padding between queue and playfield
-    const int PADDING = TILE_WIDTH * 2 / 3;
-
-    //Position of the queue container's top left corner
-    const int TOP_LEFT_X = ( WINDOW_WIDTH + pb.getWidth() ) / 2 + PADDING;
-    const int TOP_LEFT_Y = ( WINDOW_HEIGHT - pb.getHeight() ) / 2;
-    
-    //Number of preview boxes. A queue can contain up to 5 tetrominos at a time.
-    const int BOX_NUMBER = 5;
-    const int BOX_HEIGHT = TILE_WIDTH * 2;
-    
-    for ( int i = 0; i < BOX_NUMBER; i++ )
-    {
-        renderPreviewTetromino( TOP_LEFT_X, TOP_LEFT_Y + i * BOX_HEIGHT, Tqueue[i] );
-    }
-}
-
-void renderHeldTetromino( const PlayBoard &pb, const Tetromino &hold )
-{
-    if ( hold.getType() ) {
-        const int TOP_LEFT_X = ( WINDOW_WIDTH - pb.getWidth() ) / 2 - ( TILE_WIDTH * 4 );
-        const int TOP_LEFT_Y = ( WINDOW_HEIGHT - pb.getHeight() ) / 2;
-        renderPreviewTetromino( TOP_LEFT_X, TOP_LEFT_Y, hold );
-    }
-}
-
-void renderText( string text, int x, int y, bool isBold, bool isRightAligned, double scale, SDL_Color color )
+void renderText( string text, int x, int y, bool isBold, int Halign, int Valign, double scale, SDL_Color color )
 {
     textTexture.loadText( text, ( isBold ? fontBold : fontRegular ), color );
-    textTexture.render( x - isRightAligned * textTexture.getWidth() * scale, y, textTexture.getWidth() * scale, textTexture.getHeight() * scale );
+    int top_left_x, top_left_y;
+    if ( Halign == LEFT) top_left_x = x;
+    else
+    {
+        int w = textTexture.getWidth() * scale;
+        if ( Halign == CENTER )
+        {
+            top_left_x =  x - (w / 2);
+        }
+        else if ( Halign == RIGHT )
+        {
+            top_left_x = x - w;
+        }
+    }
+    if ( Valign == TOP) top_left_y = y;
+    else
+    {
+        int h = textTexture.getHeight() * scale;
+        if ( Valign == MIDDLE)
+        {
+            top_left_y =  y - (h / 2);
+        }
+        else if ( Valign == BOTTOM )
+        {
+            top_left_y = y - h;
+        }
+    }
+    textTexture.render( top_left_x, top_left_y, textTexture.getWidth() * scale, textTexture.getHeight() * scale );
 }
 
-void renderStatistics( const PlayBoard &pb, const int stat[] )
+void renderStatistics( const Player& player, Uint32 startMark, int countDownMark )
 {
     //Text box's structure:
     //-----LINE_SPACING-----
@@ -174,29 +62,46 @@ void renderStatistics( const PlayBoard &pb, const int stat[] )
     //Textbox's left/right (depends on its textbox) side
     
     //Used for textbox on the left side of playfield 
-    const int LEFT_X =  ( WINDOW_WIDTH - pb.getWidth() ) / 2 - SIDE_PADDING; 
+    const int LEFT_X =  player.getX() - SIDE_PADDING; 
     //Used for textbox on the left side of playfield 
-    const int RIGHT_X =  ( WINDOW_WIDTH + pb.getWidth() ) / 2 + SIDE_PADDING;
+    const int RIGHT_X =  player.getX() + BOARD_WIDTH + SIDE_PADDING;
 
     //Bottom of playfield
-    const int BOTTOM_Y =  ( WINDOW_HEIGHT + pb.getHeight() ) / 2;
+    const int BOTTOM_Y =  player.getY() + BOARD_HEIGHT;
 
     //Display line cleared
-    renderText( "LINES", LEFT_X, BOTTOM_Y + TITLE_Y - BOX_HEIGHT, false, true );
-    renderText( to_string( stat[0] ), LEFT_X, BOTTOM_Y + PRIMARY_TEXT_Y - BOX_HEIGHT, true, true, PRIMARY_TEXT_SCALE ); 
+    renderText( "LINES", LEFT_X, BOTTOM_Y + TITLE_Y - BOX_HEIGHT, false, RIGHT, TOP );
+    renderText( to_string( player.getLine() ), LEFT_X, BOTTOM_Y + PRIMARY_TEXT_Y - BOX_HEIGHT, true, RIGHT, TOP, PRIMARY_TEXT_SCALE ); 
 
     //Display level speed
-    renderText( "LV SPEED", LEFT_X, BOTTOM_Y + TITLE_Y - ( BOX_HEIGHT * 2 ), false, true );
-    renderText( to_string( stat[1] ), LEFT_X, BOTTOM_Y + PRIMARY_TEXT_Y - ( BOX_HEIGHT * 2 ), true, true, PRIMARY_TEXT_SCALE ); 
+    renderText( "LV SPEED", LEFT_X, BOTTOM_Y + TITLE_Y - ( BOX_HEIGHT * 2 ), false, RIGHT, TOP );
+    renderText( to_string( player.getLevel() ), LEFT_X, BOTTOM_Y + PRIMARY_TEXT_Y - ( BOX_HEIGHT * 2 ), true, RIGHT, TOP, PRIMARY_TEXT_SCALE ); 
 
     //Display score
-    renderText( "SCORE", RIGHT_X, BOTTOM_Y + TITLE_Y - BOX_HEIGHT, false, false );
-    renderText( to_string( stat[2] ), RIGHT_X, BOTTOM_Y + PRIMARY_TEXT_Y - BOX_HEIGHT, true, false, PRIMARY_TEXT_SCALE ); 
+    renderText( "SCORE", RIGHT_X, BOTTOM_Y + TITLE_Y - BOX_HEIGHT, false, LEFT, TOP );
+    renderText( to_string( player.getScore() ), RIGHT_X, BOTTOM_Y + PRIMARY_TEXT_Y - BOX_HEIGHT, true, LEFT, TOP, PRIMARY_TEXT_SCALE ); 
     
     // Display time
-    // renderText( "TIME", RIGHT_X, BOTTOM_Y + TITLE_Y - ( BOX_HEIGHT * 2 ), false, false );
-    // renderText( to_string( pb.getLevel() ), RIGHT_X, BOTTOM_Y + PRIMARY_TEXT_Y - ( BOX_HEIGHT * 2 ), true, false, PRIMARY_TEXT_SCALE ); 
+    string time = "";
+    int time_in_seconds = ( SDL_GetTicks() - startMark ) / 1000;
+    if ( countDownMark != 0 ) time_in_seconds = countDownMark * 60 - time_in_seconds;
+    if ( time_in_seconds / 60 < 10) time += '0';
+    time += to_string( time_in_seconds / 60 ) + ":";
+    if ( time_in_seconds % 60 < 10) time += '0';
+    time += to_string( time_in_seconds % 60 );
+    renderText( "TIME", RIGHT_X, BOTTOM_Y + TITLE_Y - ( BOX_HEIGHT * 2 ), false, LEFT, TOP );
+    renderText( time, RIGHT_X, BOTTOM_Y + PRIMARY_TEXT_Y - ( BOX_HEIGHT * 2 ), true, LEFT, TOP, PRIMARY_TEXT_SCALE ); 
 
+}
+
+bool displayCountdown( int x, int y, int w, int h, Uint32 startMark)
+{
+    if ( SDL_GetTicks() - startMark < 3000)
+    {
+        renderText( to_string( 3 - (SDL_GetTicks() - startMark) / 1000 ), x + w / 2, y + h / 2, true, CENTER, MIDDLE, 3, SDL_Color { 255, 255, 255 } );
+        return false;
+    }
+    else return true;
 }
 
 void clearScreen()
@@ -205,32 +110,20 @@ void clearScreen()
     SDL_RenderClear( renderer );
 }
 
-void renderFrame( const Player& player, const vector<Tetromino> &Tqueue )
-{
-    //Update screen
-    bgImage.render();
-    renderBoard( player.pb );
-    renderTetrominoQueue ( player.pb, Tqueue );
-    renderCurrentTetromino( player.pb, player.tetr, player.getGhostRow() );
-    renderHeldTetromino( player.pb, player.hold );
-    int stat[] = { player.line, player.level, player.score };
-    renderStatistics( player.pb, stat );
-    SDL_RenderPresent( renderer );
-}
-
 //Interval measured in frames
 const float HALF_BLINK_DURATION = 5000;
 Uint32 blinkMark = SDL_GetTicks();
 void renderMenuBackground( bool stop )
 {
     static short alpha = 255;
+    static short f;
     menuBackground.render();
     SDL_Rect overlay { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
     SDL_SetRenderDrawColor( renderer, 0, 0, 0, alpha );
     SDL_RenderFillRect( renderer, &overlay );
     if ( SDL_GetTicks() - blinkMark >= HALF_BLINK_DURATION / 255 )
     {
-        short f;
+        blinkMark = SDL_GetTicks();
         if ( alpha == 0 ) f = 1;
         else if ( alpha >= 200) f = -1;
         alpha += f;
@@ -238,19 +131,20 @@ void renderMenuBackground( bool stop )
     if ( stop ) alpha = 255;
 }
 
-SDL_Rect buttonBox[BUTTONS];
-int buttonHighlightState[BUTTONS];
+
+int buttonHighlightState[MAIN_MENU_BUTTONS];
+SDL_Rect buttonBox[MAIN_MENU_BUTTONS];
 
 void renderMainMenuButton( int mouse_x, int mouse_y, int &activeButton )
 {
     const int MIN_STATE = 0;
     const int MAX_STATE = 10;
     const string buttonText[] = { "SINGLEPLAYER", "MULTIPLAYER", "SETTINGS", "QUIT" };
-    if ( mouse_x >= BUTTON_X && mouse_x <= BUTTON_X + BUTTON_WIDTH )
+    if ( mouse_x >= MAIN_MENU_BUTTON_X && mouse_x <= MAIN_MENU_BUTTON_X + MAIN_MENU_BUTTON_WIDTH )
     {
-        for ( int i = 0; i < BUTTONS; i++ )
+        for ( int i = 0; i < MAIN_MENU_BUTTONS; i++ )
         {
-            if ( mouse_y >= buttonBox[i].y && mouse_y <= buttonBox[i].y + BUTTON_HEIGHT )
+            if ( mouse_y >= buttonBox[i].y && mouse_y <= buttonBox[i].y + MAIN_MENU_BUTTON_HEIGHT )
             {
                 activeButton = i;
                 break;
@@ -260,7 +154,7 @@ void renderMainMenuButton( int mouse_x, int mouse_y, int &activeButton )
     }
     else activeButton = -1;
 
-    for ( int i = 0; i < BUTTONS; i++ )
+    for ( int i = 0; i < MAIN_MENU_BUTTONS; i++ )
     {
         if ( i == activeButton )
         {
@@ -274,107 +168,257 @@ void renderMainMenuButton( int mouse_x, int mouse_y, int &activeButton )
         SDL_SetRenderDrawColor( renderer, 255, 255, 255, alpha_val);
         SDL_RenderFillRect( renderer, &buttonBox[i] );
 
-        int w, h;
-        TTF_SizeText( fontBold, buttonText[i].c_str(), &w, &h);
         SDL_Color color { 255 - alpha_val, 255 - alpha_val, 255 - alpha_val };
-        renderText( buttonText[i], buttonBox[i].x + TILE_WIDTH, buttonBox[i].y + TILE_WIDTH/2, true, false, TILE_WIDTH * 2.f / h, color );
+        renderText( buttonText[i], buttonBox[i].x + TILE_WIDTH, buttonBox[i].y +  buttonBox[i].h / 2, true, LEFT, MIDDLE, 2, color );
     }
 }
 
-vector<int> floatSpd, spinAngle;
-vector<pair<int, int>> position;
-vector<bool> isVertical;
-vector<float> scale;
+void renderMenuTetromino( int _x, int _y, const Tetromino &tetr )
+{
+        //Dimensions of a preview box.
+    const int BOX_WIDTH = TILE_WIDTH * 4;
+    const int BOX_HEIGHT = TILE_WIDTH * 4;
+    //Adjusts Y to center the tetromino in preview box, offsetX is always half the container's dimension. 
+    int offsetX, offsetY;
+
+    //Center point of the preview box.
+    const int CENTER_X = BOX_WIDTH / 2 + _x;
+    const int CENTER_Y = BOX_HEIGHT / 2 + _y;
+
+    if ( tetr.getType() == I_PIECE )    offsetY = TILE_WIDTH * 5 / 2;
+    else                                offsetY = TILE_WIDTH * 2;
+
+    offsetX = tetr.getContainerSize() * TILE_WIDTH / 2;
+
+    for ( int row = 0; row < tetr.getContainerSize(); row++ )
+        for ( int col = 0; col < tetr.getContainerSize(); col++ )
+            if ( tetr.getCellState( row, col ) != 0 )
+                tileSpriteSheet.render( CENTER_X - offsetX + col * TILE_WIDTH,
+                                        CENTER_Y + offsetY - (row + 1) * TILE_WIDTH,
+                                        TILE_WIDTH, TILE_WIDTH,
+                                        &tileSpriteClips[ tetr.getCellState( row, col ) ] );
+}
+
+const int MAX_FLOAT_PIECE = 5;
+int floatSpd[MAX_FLOAT_PIECE], spinAngle[MAX_FLOAT_PIECE];
+pair<int, int> position[MAX_FLOAT_PIECE];
+bool isVertical[MAX_FLOAT_PIECE];
+float pieceScale[MAX_FLOAT_PIECE];
+int currentFloating = 0;
 Uint32 spawnMark, waitUntilNextSpawn;
+const int MOVE_DELAY = 1000 / 60;
+Uint32 moveMark = SDL_GetTicks();
 void renderFloatingTetromino( vector<Tetromino> &floating )
 {
-    if ( floatSpd.size() == 0 || ( floatSpd.size() <= 8 && SDL_GetTicks() - spawnMark > waitUntilNextSpawn ) )
+    if ( currentFloating == 0 || ( currentFloating < 5 && SDL_GetTicks() - spawnMark > waitUntilNextSpawn ) )
     {
-        floatSpd.push_back( ( rand() % 4 + 2 ) * ( rand() % 2 * 2 - 1 ));
+        floatSpd[currentFloating] = ( rand() % 4 + 2 ) * ( rand() % 2 * 2 - 1 );
         waitUntilNextSpawn = rand() % 2000 + 1000;
-        isVertical.push_back( rand() % 2 );
-        if ( isVertical[isVertical.size() - 1] )
+        isVertical[currentFloating] = rand() % 2 ;
+        if ( isVertical[currentFloating] )
         {
-            int direction =  2 * ( floatSpd[floatSpd.size() - 1] < 0 ) - 1;
-            position.push_back( make_pair(  rand() % ( TILE_WIDTH * 56 ) + TILE_WIDTH * 4,
-                                            floatSpd[floatSpd.size() - 1] > 0 ? TILE_WIDTH * -4 : WINDOW_HEIGHT ) );
+            position[currentFloating] = make_pair(  rand() % ( TILE_WIDTH * 56 ) + TILE_WIDTH * 4,
+                                                    floatSpd[currentFloating] > 0 ? TILE_WIDTH * -4 : WINDOW_HEIGHT );
         }
         else
         {
-            position.push_back( make_pair(  floatSpd[floatSpd.size() - 1] > 0 ? TILE_WIDTH * -4 : WINDOW_WIDTH,
-                                            rand() % ( TILE_WIDTH * 24 ) + TILE_WIDTH * 4 ) );
+            position[currentFloating] = make_pair(  floatSpd[currentFloating] > 0 ? TILE_WIDTH * -4 : WINDOW_WIDTH,
+                                                    rand() % ( TILE_WIDTH * 24 ) + TILE_WIDTH * 4 );
         }
-        scale.push_back((rand() % 11) / 10.f + 1);
-        spinAngle.push_back( 0 );
+        pieceScale[currentFloating] = (rand() % 11) / 10.f + 1;
+        spinAngle[currentFloating] = 0;
+        currentFloating++;
         spawnMark = SDL_GetTicks();
     }
-    for ( int i = 0; i < floatSpd.size(); i++ )
+    for ( int i = 0; i < currentFloating; i++ )
     {
         if ( ( isVertical[i] && ( position[i].second > WINDOW_HEIGHT || position[i].second < TILE_WIDTH * -4 ) ) ||
-             ( !isVertical[i] && (position[i].first > WINDOW_WIDTH || position[i].first < TILE_WIDTH * -4 ) ) )
+            ( !isVertical[i] && (position[i].first > WINDOW_WIDTH || position[i].first < TILE_WIDTH * -4 ) ) )
         {
-            floatSpd.erase( floatSpd.begin() + i );
-            spinAngle.erase( spinAngle.begin() + i);
-            position.erase( position.begin() + i);
-            isVertical.erase( isVertical.begin() + i );
+            for ( int j = i; j < currentFloating - 1; j++ )
+            {
+                floatSpd[j] = floatSpd[j+1];
+                spinAngle[j] = spinAngle[j+1];
+                isVertical[j] = isVertical[j+1];
+                position[j] = position[j+1];
+                pieceScale[j] = pieceScale[j+1];
+            }
             floating.erase( floating.begin() + i );
-            scale.erase( scale.begin() + i );
+            currentFloating--;
         }
-        else
-        {
-            SDL_Texture *targetTexture = SDL_CreateTexture( renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, TILE_WIDTH * 3, TILE_WIDTH * 2 );
-            SDL_SetRenderTarget( renderer, targetTexture );
-            SDL_SetTextureBlendMode( targetTexture, SDL_BLENDMODE_BLEND);
-            SDL_SetRenderDrawColor( renderer, 0, 0, 0, 0 );
-            SDL_RenderClear( renderer );
-            renderPreviewTetromino( 0, 0, floating[i] );
-            SDL_SetRenderTarget( renderer, NULL );
-            SDL_Rect rect { position[i].first, position[i].second, TILE_WIDTH * 3 * scale[i], TILE_WIDTH * 2 * scale[i] };
-            SDL_RenderCopyEx( renderer, targetTexture, NULL, &rect, spinAngle[i], NULL, SDL_FLIP_NONE );
-            SDL_DestroyTexture( targetTexture );
-            targetTexture = NULL;
-            if ( isVertical[i] ) position[i].second += floatSpd[i];
-            else position[i].first += floatSpd[i];
-            spinAngle[i] ++;
-            if ( spinAngle[i] == 360 ) spinAngle[i] = 0;
-        }
+        SDL_Texture *floatPieceHolder = SDL_CreateTexture( renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, TILE_WIDTH * 4, TILE_WIDTH * 4 );
+        SDL_SetRenderTarget( renderer, floatPieceHolder );
+        SDL_SetTextureBlendMode( floatPieceHolder, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor( renderer, 0, 0, 0, 0 );
+        SDL_RenderClear( renderer );
+        renderMenuTetromino( 0, 0, floating[i] );
+        SDL_SetRenderTarget( renderer, NULL );
+        SDL_Rect rect { position[i].first, position[i].second, TILE_WIDTH * 4 * pieceScale[i], TILE_WIDTH * 4 * pieceScale[i] };
+        SDL_RenderCopyEx( renderer, floatPieceHolder, NULL, &rect, spinAngle[i], NULL, SDL_FLIP_NONE );
+        SDL_DestroyTexture( floatPieceHolder );
+        floatPieceHolder = NULL;
+
+    }
+
+    if ( SDL_GetTicks() - moveMark >= MOVE_DELAY )
+    for ( int i = 0; i < currentFloating; i++ )
+    {
+        if ( isVertical[i] ) position[i].second += floatSpd[i];
+        else position[i].first += floatSpd[i];
+        spinAngle[i] ++;
+        if ( spinAngle[i] == 360 ) spinAngle[i] = 0;
+        moveMark = SDL_GetTicks();
     }
 }
 
-void renderGameTitle()
+void renderGameTitle( Texture& title)
 {
-    Texture title;
-    title.loadFromFile("src/media/img/game_title.png");
-    title.render( TILE_WIDTH * 5 / 2, TILE_WIDTH * 4, TILE_WIDTH * 25, TILE_WIDTH * 14 );
+    title.render( TILE_WIDTH * 4, TILE_WIDTH * 3, TILE_WIDTH * 25, TILE_WIDTH * 14 );
 }
 
-const int TRANSITION_DURATION = 2500;
-Uint32 transitionMark = SDL_GetTicks();
-
-bool renderTransition( bool transIn )
+bool handleStartButton( int mouse_x, int mouse_y, int center_x, int middle_y )
 {
+    bool isActive = false;
+    int width = 12 * TILE_WIDTH, height = 2 * TILE_WIDTH;
+    short backalpha = 0;
+    SDL_Rect hitbox { center_x - width / 2, middle_y - height / 2, width, height };
+    if ( mouse_x >= hitbox.x && mouse_x <= hitbox.x + hitbox.w && mouse_y >= hitbox.y && mouse_y <= hitbox.y + hitbox.h )
+    {
+        backalpha = 255;
+        isActive = true;
+    }
+    SDL_SetRenderDrawColor( renderer, 255, 255, 255, backalpha );
+    SDL_RenderFillRect( renderer, &hitbox );
+    SDL_Color color { 255-backalpha, 255-backalpha, 255-backalpha };
+    renderText( "START", center_x, middle_y, false, CENTER, MIDDLE, 1, color );
+    return isActive;
+}
+
+bool handleBackButton( int mouse_x, int mouse_y )
+{
+    bool isActive = false;
+    int left_x = 2 * TILE_WIDTH, top_y = WINDOW_HEIGHT - 4 * TILE_WIDTH;
+    int width = 4 * TILE_WIDTH, height = 2 * TILE_WIDTH;
+    short backalpha = 0;
+    if ( mouse_x >= left_x && mouse_x <= left_x + width && mouse_y >= top_y && mouse_y <= top_y + height )
+    {
+        backalpha = 255;
+        isActive = true;
+    }
+    SDL_Rect hitbox { left_x, top_y, width, height };
+    SDL_SetRenderDrawColor( renderer, 255, 255, 255, backalpha );
+    SDL_RenderFillRect( renderer, &hitbox );
+    SDL_Color color { 255-backalpha, 255-backalpha, 255-backalpha };
+    renderText( "BACK", left_x + width / 2, top_y + height / 2, false, CENTER, MIDDLE, 1, color );
+    return isActive;
+}
+
+const string soloGameModeName[] = { "CLASSIC", "SPRINT", "BLITZ", "MASTER", "MYSTERY" };
+SDL_Rect soloMenuButtonBox[SOLO_MENU_BUTTONS];
+
+void renderSoloMenu( int mouse_x, int mouse_y, int &activeButton )
+{
+    renderText( "SELECT GAME MODE", TILE_WIDTH * 4, TILE_WIDTH * 6, true, LEFT, BOTTOM, 3 );
+    if ( mouse_x >= SOLO_MENU_BUTTON_X && mouse_x <= SOLO_MENU_BUTTON_X + SOLO_MENU_BUTTON_WIDTH )
+    {
+        for ( int i = 0; i < SOLO_MENU_BUTTONS; i++ )
+        {
+            if ( mouse_y >= soloMenuButtonBox[i].y && mouse_y <= soloMenuButtonBox[i].y + SOLO_MENU_BUTTON_HEIGHT + SOLO_BUTTON_PADDING )
+            {
+                activeButton = i;
+                break;
+            }
+        }
+    } else activeButton = -1;
+    for ( int i = 0; i < SOLO_MENU_BUTTONS; i++ )
+    {
+
+        if ( i == activeButton )
+        {
+            const int BORDER_SIZE = SOLO_BUTTON_PADDING;
+            SDL_SetRenderDrawColor( renderer, 255, 255, 255, 255 );
+            SDL_Rect border = soloMenuButtonBox[i];
+            border.x -= BORDER_SIZE;
+            border.y -= BORDER_SIZE;
+            border.w += BORDER_SIZE * 2;
+            border.h += BORDER_SIZE * 2;
+            SDL_RenderFillRect( renderer, &border );
+
+            SDL_SetRenderDrawColor( renderer, 0, 0, 0, 200 );
+            SDL_Rect descPanel { TILE_WIDTH * 37, TILE_WIDTH * 8, TILE_WIDTH * 24, TILE_WIDTH * 22 };
+            SDL_RenderFillRect( renderer, &descPanel );
+            renderText( "DESCRIPTION", TILE_WIDTH * 40, TILE_WIDTH * 14, true, LEFT, BOTTOM, 3 );
+            renderText( soloGameModeName[i] + "Description", TILE_WIDTH * 40, TILE_WIDTH * 15, false, LEFT, TOP );
+            renderText( "HIGH SCORE", TILE_WIDTH * 40, TILE_WIDTH * 22, true, LEFT, BOTTOM, 3 );
+            
+            for ( int j = 1; j <= 5; j++ )
+            renderText( to_string(j) + ". 0", TILE_WIDTH * 40, TILE_WIDTH * (22 + j), false, LEFT, TOP );
+        }
+        SDL_SetRenderDrawColor( renderer, 0, 0, 0, 255 );
+        SDL_RenderFillRect( renderer, &soloMenuButtonBox[i] );
+        renderText( soloGameModeName[i], soloMenuButtonBox[i].x + TILE_WIDTH, soloMenuButtonBox[i].y + soloMenuButtonBox[i].h / 2,
+                    false, LEFT, MIDDLE, 2, SDL_Color{255,255,255} );
+        if ( activeButton == i )    SDL_SetRenderDrawColor( renderer, 255, 255, 255, 100 );
+        else                        SDL_SetRenderDrawColor( renderer, 0, 0, 0, 100 );
+        SDL_RenderFillRect( renderer, &soloMenuButtonBox[i] );
+    }
+}
+
+Uint32 transitionMark = SDL_GetTicks();
+void renderTransition( bool &transIn )
+{
+    const int TRANSITION_DURATION = 1000;
     static int transitionAlpha = 255;
     SDL_Rect overlay { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
     SDL_SetRenderDrawColor( renderer, 0, 0, 0, transitionAlpha );
     SDL_RenderFillRect( renderer, &overlay );
-    if ( SDL_GetTicks() - transitionMark >= TRANSITION_DURATION / 255 )
+    if ( SDL_GetTicks() - transitionMark >= TRANSITION_DURATION * 5 / 255 )
     {
         transitionMark = SDL_GetTicks();
         if ( transIn && transitionAlpha != 0 )
         {
-            transitionAlpha--;
+            transitionAlpha -= 5;
         }
         else if ( !transIn && transitionAlpha != 255)
         {
-            transitionAlpha++;
+            transitionAlpha += 5;
         }
         else 
         {
-            if ( !transIn ) renderMenuBackground( true );
-            return true;
+            transIn = !transIn;
         }
     }
-    return false;
+}
+
+// const int LEFT_ADJUSTMENTBUTTON_X =  -TILE_WIDTH * 6;
+// const int RIGHT_ADJUSTMENTBUTTON_X = TILE_WIDTH * 5;
+// ADJUSTMENT_BUTTON_WIDTH = TILE_WIDTH;
+void renderAdjustmentButton( int x, int y, bool disableLeft, bool disableRight )
+{
+    Texture adjButton;
+    adjButton.loadFromFile( "src/media/img/adjustment_button.png" );
+    SDL_Rect left {0, 0, 100, 100};
+    SDL_Rect right {100, 0, 100, 100};
+    if (disableLeft)
+    {
+        adjButton.setColorMod(50, 50, 50);
+        adjButton.render( x + LEFT_ADJUSTMENTBUTTON_X, y, TILE_WIDTH, TILE_WIDTH, &left );
+        adjButton.setColorMod(255, 255, 255);
+        adjButton.render( x + RIGHT_ADJUSTMENTBUTTON_X, y, TILE_WIDTH, TILE_WIDTH, &right );
+    }
+    else if (disableRight)
+    {
+        adjButton.setColorMod(50, 50, 50);
+        adjButton.render( x + RIGHT_ADJUSTMENTBUTTON_X, y, TILE_WIDTH, TILE_WIDTH, &right );
+        adjButton.setColorMod(255, 255, 255);
+        adjButton.render( x + LEFT_ADJUSTMENTBUTTON_X, y, TILE_WIDTH, TILE_WIDTH, &left );
+    }
+    else
+    {
+        adjButton.render( x + LEFT_ADJUSTMENTBUTTON_X, y, TILE_WIDTH, TILE_WIDTH, &left );
+        adjButton.render( x + RIGHT_ADJUSTMENTBUTTON_X, y, TILE_WIDTH, TILE_WIDTH, &right );
+    }
+    
 }
 
 bool init()
@@ -394,7 +438,7 @@ bool init()
         SDL_SetHint( SDL_HINT_RENDER_SCALE_QUALITY, "1" );
 
         //Create game window
-        game_window = SDL_CreateWindow( "Test", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_SHOWN );
+        game_window = SDL_CreateWindow( "Homemade Tetris", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_SHOWN );
         if ( game_window == NULL )
         {
             cout << "Failed to create window" << endl;
@@ -431,7 +475,7 @@ bool init()
     return success;
 }
 
-void loadMainMenuElements()
+void loadMenuElements()
 {
     //Loads main menu background
     const string MENU_BACKGROUND_PATH = "src/media/img/menu_bg.png";
@@ -441,19 +485,26 @@ void loadMainMenuElements()
     }
 
     //Loads button hit boxes & initialize highlighting states
-    for ( int i = 0; i < BUTTONS; i++ )
+    for ( int i = 0; i < MAIN_MENU_BUTTONS; i++ )
     {
-        buttonBox[i].x = BUTTON_X;
-        buttonBox[i].y = SOLO_BUTTON_Y + ( BUTTON_HEIGHT + BUTTON_PADDING ) * i;
-        buttonBox[i].w = BUTTON_WIDTH;
-        buttonBox[i].h = BUTTON_HEIGHT;
+        buttonBox[i].x = MAIN_MENU_BUTTON_X;
+        buttonBox[i].y = MAIN_MENU_FIRST_BUTTON_Y + ( MAIN_MENU_BUTTON_HEIGHT + MAIN_MENU_BUTTON_PADDING ) * i;
+        buttonBox[i].w = MAIN_MENU_BUTTON_WIDTH;
+        buttonBox[i].h = MAIN_MENU_BUTTON_HEIGHT;
         buttonHighlightState[i] = 0;
+    }
+    for ( int i = 0; i < SOLO_MENU_BUTTONS; i++ )
+    {
+        soloMenuButtonBox[i].x = SOLO_MENU_BUTTON_X;
+        soloMenuButtonBox[i].y = SOLO_MENU_FIRST_BUTTON_Y + (SOLO_MENU_BUTTON_HEIGHT + SOLO_BUTTON_PADDING) * i;
+        soloMenuButtonBox[i].w = SOLO_MENU_BUTTON_WIDTH;
+        soloMenuButtonBox[i].h = SOLO_MENU_BUTTON_HEIGHT;
     }
 }
 
 void loadMedia()
 {
-    loadMainMenuElements();
+    loadMenuElements();
     const string TILE_SPRITE_SHEET_PATH = "src/media/img/Tile_sheet.png";
     const string AUDIO_PATH = "/Tile_sheets.png";
 
@@ -514,7 +565,7 @@ void close()
     TTF_CloseFont( fontRegular );
     fontBold = NULL;
     fontRegular = NULL;
-
+    
 
     //Destroy window
     SDL_DestroyRenderer( renderer );

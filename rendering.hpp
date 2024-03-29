@@ -1,67 +1,76 @@
 #ifndef rendering_hpp
 #define rendering_hpp
 #include "Player.hpp"
-#include "Texture.hpp"
+#include <vector>
 
-//Renders the playfield
-void renderBoard( const PlayBoard &pb );
-
-//Renders the currently playing tetromino and its ghost on the field
-void renderCurrentTetromino( const PlayBoard &pb, const Tetromino &tetr, int ghostRow );
-
-/**
- * Renders preview tetrominos in Hold/Queue container
- * \param x, y Position of preview box's top left corner
- */
-void renderPreviewTetromino( int x, int y, const Tetromino &tetr );
-
-//Renders the tetromino queue
-void renderTetrominoQueue( const PlayBoard &pb, const vector<Tetromino>& Tqueue );
-
-//Renders the held tetromino
-void renderHeldTetromino( const PlayBoard &pb, const Tetromino &tetr );
-
+enum HorizontalAlignment { LEFT, CENTER, RIGHT };
+enum VerticalAlignment { TOP, MIDDLE, BOTTOM };
 /**
  * Renders text
  * \param text Text to be rendered
- * \param x X-coordinate of textbox's top-left/right corner ( takes left side if text is left/center aligned, else right side )
- * \param y Y-coordinate of textbox's top-left/right corner
+ * \param x Textbox's position X, depends on how the text is aligned: Left X if left aligned, Center X if center aligned, Right X if right aligned)
+ * \param y Textbox's position Y, depends on how the text is aligned: Top Y if top aligned, Middle Y if middle aligned, Bottom X if right aligned)
  * \param isBold Indicates whether the text should be bold
- * \param isRightAligned Indicates how text should be aligned in the box
+ * \param Halign Indicates text's horizontal alignment
+ * \param Valign Indicates text's vertical alignment
  * \param scale Adjusts text size
  * \param color Adjusts text color
  */
-void renderText( string text, int x, int y, bool isBold, bool isRightAligned, double scale = 1, SDL_Color color = {255, 255, 255} );
+void renderText( string text, int x, int y, bool isBold, int Halign, int Valign, double scale = 1, SDL_Color color = {255, 255, 255} );
 
-void renderStatistics( const PlayBoard &pb, const int stat[] );
+void renderStatistics( const Player& player, Uint32 startMark, int countDownMark = 0 );
 
+bool displayCountdown( int x, int y, int w, int h, Uint32 startMark);
 //Clears screen
 void clearScreen();
 
-//Renders the whole frame
-void renderFrame( const Player &player, const vector<Tetromino> &Tqueue );
+bool displayCountdown( int x, int y, int w, int h, Uint32 startMark );
 
 //---------------------------MAIN MENU---------------------------
 //Main menu buttons
-const int BUTTONS = 4;
-enum Button { SOLO_BUTTON, MULTI_BUTTON, SETTINGS_BUTTON, QUIT_BUTTON };
-extern SDL_Rect buttonBox[BUTTONS];
-const int BUTTON_X = TILE_WIDTH * 8;
-const int SOLO_BUTTON_Y = TILE_WIDTH * 18;
-const int BUTTON_HEIGHT = TILE_WIDTH * 3;
-const int BUTTON_WIDTH = TILE_WIDTH * 16;
-const int BUTTON_PADDING = TILE_WIDTH;
+const int MAIN_MENU_BUTTONS = 4;
+extern SDL_Rect buttonBox[MAIN_MENU_BUTTONS];
+const int MAIN_MENU_BUTTON_X = TILE_WIDTH * 8;
+const int MAIN_MENU_FIRST_BUTTON_Y = TILE_WIDTH * 18;
+const int MAIN_MENU_BUTTON_HEIGHT = TILE_WIDTH * 3;
+const int MAIN_MENU_BUTTON_WIDTH = TILE_WIDTH * 16;
+const int MAIN_MENU_BUTTON_PADDING = TILE_WIDTH;
 
 //Renders main menu screen
 void renderMenuBackground( bool stop = false );
 
-void renderMainMenuButton( int mouse_x, int mouse_y, int &activeButton );
+void renderMainMenuButton( int mouse_x, int mouse_y, int &activeButtons );
+
+/**
+ * Renders individual tetromino in the targeted texture, then the texture will float on screen
+ * \param x, y Position of tetromino's top left corner
+ */
+void renderMenuTetromino( int _x, int _y, const Tetromino &tetr );
 
 void renderFloatingTetromino( vector<Tetromino> &floating );
 
-void renderGameTitle();
+void renderGameTitle( Texture &title);
 
-bool renderTransition( bool transIn );
+bool handleStartButton( int mouse_x, int mouse_y, int center_x, int middle_y );
+
+bool handleBackButton( int mouse_x, int mouse_y );
+
+void renderTransition( bool &transIn );
+
+//---------------------------SOLO MENU---------------------------
+const int SOLO_MENU_BUTTONS = 5;
+extern SDL_Rect soloMenuButtonBox[SOLO_MENU_BUTTONS];
+const int SOLO_MENU_BUTTON_X = TILE_WIDTH * 8;
+const int SOLO_MENU_FIRST_BUTTON_Y = TILE_WIDTH * 10;
+const int SOLO_MENU_BUTTON_HEIGHT = TILE_WIDTH * 4;
+const int SOLO_MENU_BUTTON_WIDTH = TILE_WIDTH * 20;
+const int SOLO_BUTTON_PADDING = TILE_WIDTH / 5;
+extern const string soloGameModeName[];
+void renderSoloMenu( int mouse_x, int mouse_y, int &activeButton );
+
+const int LEFT_ADJUSTMENTBUTTON_X = -TILE_WIDTH * 6;;
+const int RIGHT_ADJUSTMENTBUTTON_X = TILE_WIDTH * 5;
+void renderAdjustmentButton( int x, int y, bool disableLeft, bool disableRight );
 //--------------------------INIT & LOAD--------------------------
 //Initializes SDL system, game window and renderer
 bool init();

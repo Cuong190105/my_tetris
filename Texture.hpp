@@ -30,6 +30,10 @@ class Texture
         //Loads texture from file
         bool loadFromFile( string path );
 
+        void setColorMod( Uint8 r, Uint8 g, Uint8 b );
+
+        void setAlphaMod( Uint8 a );
+
         /**
          * Renders texture at a given position
          * \param x, y coordinate of destination frame's top left corner
@@ -46,6 +50,7 @@ class Texture
         int getHeight();
 };
 
+enum gameScene {MAIN_MENU, SOLO_MENU, MULTI_MENU, SETTINGS, QUIT, SET_RULES, INGAME};
 extern SDL_Rect tileSpriteClips[8];
 extern Texture tileSpriteSheet;
 extern Texture textTexture;

@@ -3,16 +3,15 @@
 #include "rendering.hpp"
 using namespace std;
 
-enum gameScene {MAIN_MENU, SOLO_MENU, MULTI_MENU, SETTINGS, QUIT};
-extern SDL_Event event;
+void gameHandler( int players, int gameMode, int mod[3], int &scene, bool &transIn );
 
 void generateTetromino( vector<int> &Tqueue );
 
-void handlingKeyPress( SDL_Event &e, Player &player );
+int adjustmentButton( int x, int y, bool disableLeft, bool disableRight );
 
-void ingameProgress();
+void settingRules( bool isSolo, int gameMode, int &activeButton, bool &adjusted, int mod[4] );
 
-void gameManager( int &scene );
+void taskManager();
 
-void handlingMouseClick( int &scene, int activeButton );
+void menuManager( int &scene, bool &transIn, int &players, int &gameMode, int mod[4] );
 #endif

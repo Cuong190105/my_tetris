@@ -1,12 +1,16 @@
 #ifndef Player_hpp
 #define Player_hpp
 #include "Tetromino.hpp"
+#include "Texture.hpp"
 #include <SDL.h>
 
 
 class Player
 {
     private:
+        //Position and dimenstions of this player's playfield
+        int x, y;
+
         PlayBoard pb;
         Tetromino tetr;
         Tetromino hold;
@@ -37,18 +41,32 @@ class Player
 
         //Stores last move (Rotate, move left/right, or non-locking drop)
         int lastMove;
+
+        bool gameOver;
     public:
-        Player( int _level = 1 );
+        Player( int _level, int _x, int _y );
         ~Player();
 
         //Returns this player's score
-        int getScore();
+        int getScore() const;
 
         //Returns this player's line cleared
-        int getLine();
+        int getLine() const;
 
         //Returns this player's level
-        int getLevel();
+        int getLevel() const;
+
+        void setLevel( int _level );
+
+        void terminateGame();
+
+        bool isGameOver();
+
+        void setX( int _x );
+        int getX() const;
+
+        void setY( int _y );
+        int getY() const;
 
         /**
          * Returns the row of the ghost of current tetromino on playfield
@@ -122,9 +140,20 @@ class Player
 
         void swapHoldPiece();
 
-        friend void ingameProgress();
+        //===================================GRAPHICS================================
+        void displayBoard();
 
-        friend void renderFrame( const Player &player, const vector<Tetromino> &Tqueue );
+        void displayPreviewTetromino( int _x, int _y, const Tetromino &Ptetr );
+
+        void displayCurrentTetromino();
+
+        void displayHeldTetromino();
+
+        void displayTetrominoQueue( vector<Tetromino> &Tqueue, int previewPieces = 5, int queuePosition = 0 );
+
+        void ingameProgress( const vector<Tetromino> &Tqueue, int &queuePosition, int &scene );
+
+        void handlingKeyPress( SDL_Event &e );
 };
 
 #endif

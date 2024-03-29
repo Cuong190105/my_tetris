@@ -10,6 +10,9 @@ const int TILE_WIDTH = 30;
 //3 rows at the top of the board are hidden, at which new tetromino is spawned.
 const int HIDDEN_ROW = 3;
 
+const int BOARD_WIDTH = WIDTH_BY_TILE * TILE_WIDTH;
+const int BOARD_HEIGHT = ( HEIGHT_BY_TILE - HIDDEN_ROW ) * TILE_WIDTH;
+
 class PlayBoard {
     private:
         
@@ -24,12 +27,6 @@ class PlayBoard {
 
         //Destructor
         ~PlayBoard();
-
-        //Gets the width of the board
-        int getWidth() const;
-
-        //Gets the height of the board
-        int getHeight() const;
 
         /**
          * Gets the state of a cell given its coordinate
