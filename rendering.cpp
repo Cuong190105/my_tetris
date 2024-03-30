@@ -1,10 +1,7 @@
 #include "rendering.hpp"
-#include <SDL_image.h>
 #include <iostream>
 #include <cstdlib>
 using namespace std;
-
-SDL_Window *game_window;
 
 void renderText( string text, int x, int y, bool isBold, int Halign, int Valign, double scale, SDL_Color color )
 {
@@ -39,7 +36,7 @@ void renderText( string text, int x, int y, bool isBold, int Halign, int Valign,
     textTexture.render( top_left_x, top_left_y, textTexture.getWidth() * scale, textTexture.getHeight() * scale );
 }
 
-void renderStatistics( const Player& player, Uint32 startMark, int countDownMark )
+void renderStatistics( const Player& player, Uint32 startMark, int countDownMark, int lineTarget )
 {
     //Text box's structure:
     //-----LINE_SPACING-----
@@ -71,7 +68,7 @@ void renderStatistics( const Player& player, Uint32 startMark, int countDownMark
 
     //Display line cleared
     renderText( "LINES", LEFT_X, BOTTOM_Y + TITLE_Y - BOX_HEIGHT, false, RIGHT, TOP );
-    renderText( to_string( player.getLine() ), LEFT_X, BOTTOM_Y + PRIMARY_TEXT_Y - BOX_HEIGHT, true, RIGHT, TOP, PRIMARY_TEXT_SCALE ); 
+    renderText( to_string( player.getLine() ) + (lineTarget != -1 ? "/" + to_string(lineTarget) : ""), LEFT_X, BOTTOM_Y + PRIMARY_TEXT_Y - BOX_HEIGHT, true, RIGHT, TOP, PRIMARY_TEXT_SCALE ); 
 
     //Display level speed
     renderText( "LV SPEED", LEFT_X, BOTTOM_Y + TITLE_Y - ( BOX_HEIGHT * 2 ), false, RIGHT, TOP );
@@ -96,12 +93,14 @@ void renderStatistics( const Player& player, Uint32 startMark, int countDownMark
 
 bool displayCountdown( int x, int y, int w, int h, Uint32 startMark)
 {
+    static bool cdSound = false;
+    if ( !cdSound ) { cdSound = true; playSfx(COUNTDOWN); }
     if ( SDL_GetTicks() - startMark < 3000)
     {
         renderText( to_string( 3 - (SDL_GetTicks() - startMark) / 1000 ), x + w / 2, y + h / 2, true, CENTER, MIDDLE, 3, SDL_Color { 255, 255, 255 } );
         return false;
     }
-    else return true;
+    else { cdSound = false; return true; }
 }
 
 void clearScreen()
@@ -421,60 +420,6 @@ void renderAdjustmentButton( int x, int y, bool disableLeft, bool disableRight )
     
 }
 
-bool init()
-{
-    //Initialization status flag
-    bool success = true;
-
-    //Initialize SDL
-    if ( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER ) < 0 )
-    {
-        cout << "Failed to initialize SDL" << endl;
-        success = false;
-    }
-    else
-    {
-        //Set hint
-        SDL_SetHint( SDL_HINT_RENDER_SCALE_QUALITY, "1" );
-
-        //Create game window
-        game_window = SDL_CreateWindow( "Homemade Tetris", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_SHOWN );
-        if ( game_window == NULL )
-        {
-            cout << "Failed to create window" << endl;
-            success = false;
-        }
-        else 
-        {
-            //Create renderer
-            renderer = SDL_CreateRenderer( game_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE );
-            if ( renderer == NULL )
-            {
-                cout << "Failed to create renderer" << endl;
-                success = false;
-            }
-            else
-            {
-                SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-                SDL_SetRenderDrawColor( renderer, 0x00, 0x00, 0x00, 0xFF );
-                int imgFlags = IMG_INIT_PNG;
-                if( !( IMG_Init( imgFlags ) & imgFlags ) )
-                {
-                    printf( "SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError() );
-                    success = false;
-                }
-                //Initialize SDL_ttf
-                if( TTF_Init() == -1 )
-                {
-                    printf( "SDL_ttf could not initialize! SDL_ttf Error: %s\n", TTF_GetError() );
-                    success = false;
-                }
-            }
-        }
-    }
-    return success;
-}
-
 void loadMenuElements()
 {
     //Loads main menu background
@@ -500,47 +445,7 @@ void loadMenuElements()
         soloMenuButtonBox[i].w = SOLO_MENU_BUTTON_WIDTH;
         soloMenuButtonBox[i].h = SOLO_MENU_BUTTON_HEIGHT;
     }
-}
-
-void loadMedia()
-{
-    loadMenuElements();
-    const string TILE_SPRITE_SHEET_PATH = "src/media/img/Tile_sheet.png";
-    const string AUDIO_PATH = "/Tile_sheets.png";
-
-    //Loads sprite sheet
-    if ( !tileSpriteSheet.loadFromFile( TILE_SPRITE_SHEET_PATH ) )
-    {
-        cout << "Failed to load Tile sprite sheet." << endl;
-    }
-    else
-    {
-        for ( int i = 0; i < 4; i++ )
-        {    
-            tileSpriteClips[ i ].x = 300 * i;
-		    tileSpriteClips[ i ].y = 0;
-		    tileSpriteClips[ i ].w = 300;
-		    tileSpriteClips[ i ].h = 300;
-
-            tileSpriteClips[ i + 4 ].x = 300 * i;
-		    tileSpriteClips[ i + 4 ].y = 300;
-		    tileSpriteClips[ i + 4 ].w = 300;
-		    tileSpriteClips[ i + 4 ].h = 300;
-        }
-    }
-
-
-    //Load font
-    fontBold = TTF_OpenFont("src/media/fonts/gameFontBold.ttf", 30);
-    if ( fontBold == NULL )
-    {
-        cout << "Failed to load font." << endl;
-    }
-    fontRegular = TTF_OpenFont("src/media/fonts/gameFontRegular.ttf", 30);
-    if ( fontRegular == NULL )
-    {
-        cout << "Failed to load font." << endl;
-    }
+    playBackgroundMusic( MENU );
 }
 
 void loadRandomBackground()
@@ -551,31 +456,4 @@ void loadRandomBackground()
     {
         cout << "Failed to load background." << endl;
     }
-}
-
-void close()
-{
-    //Destroy all textures
-    tileSpriteSheet.free();
-    textTexture.free();
-    bgImage.free();
-    menuBackground.free();
-    //Free font
-    TTF_CloseFont( fontBold );
-    TTF_CloseFont( fontRegular );
-    fontBold = NULL;
-    fontRegular = NULL;
-    
-
-    //Destroy window
-    SDL_DestroyRenderer( renderer );
-    renderer = NULL;
-
-    SDL_DestroyWindow( game_window );
-    game_window = NULL;
-
-    //Quit SDL
-    TTF_Quit();
-    IMG_Quit();
-    SDL_Quit();
 }

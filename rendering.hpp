@@ -2,6 +2,7 @@
 #define rendering_hpp
 #include "Player.hpp"
 #include <vector>
+#include <SDL_image.h>
 
 enum HorizontalAlignment { LEFT, CENTER, RIGHT };
 enum VerticalAlignment { TOP, MIDDLE, BOTTOM };
@@ -18,7 +19,7 @@ enum VerticalAlignment { TOP, MIDDLE, BOTTOM };
  */
 void renderText( string text, int x, int y, bool isBold, int Halign, int Valign, double scale = 1, SDL_Color color = {255, 255, 255} );
 
-void renderStatistics( const Player& player, Uint32 startMark, int countDownMark = 0 );
+void renderStatistics( const Player& player, Uint32 startMark, int countDownMark = 0, int lineTarget = 0 );
 
 bool displayCountdown( int x, int y, int w, int h, Uint32 startMark);
 //Clears screen
@@ -71,17 +72,9 @@ void renderSoloMenu( int mouse_x, int mouse_y, int &activeButton );
 const int LEFT_ADJUSTMENTBUTTON_X = -TILE_WIDTH * 6;;
 const int RIGHT_ADJUSTMENTBUTTON_X = TILE_WIDTH * 5;
 void renderAdjustmentButton( int x, int y, bool disableLeft, bool disableRight );
-//--------------------------INIT & LOAD--------------------------
-//Initializes SDL system, game window and renderer
-bool init();
 
-//Loads media
-void loadMedia();
-
-//Loads random background
 void loadRandomBackground();
 
-//Terminate SDL system and close window
-void close();
+void loadMenuElements();
 
 #endif

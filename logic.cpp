@@ -33,6 +33,8 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
     {
         Player player ( mod[LEVEL], gameMode, ( WINDOW_WIDTH - BOARD_WIDTH ) / 2, ( WINDOW_HEIGHT - BOARD_HEIGHT ) / 2 ) ;
         int isDrawn = true;
+        if ( gameMode == MASTER ) mod[LINECAP] == 300;
+        else if ( gameMode == CLASSIC || gameMode == BLITZ ) mod[LINECAP] = -1;
         while ( !player.isGameOver() )
         {
             clearScreen();
@@ -49,12 +51,12 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                 else
                 {
                     start = displayCountdown(player.getX(), player.getY(), BOARD_WIDTH, BOARD_HEIGHT, startMark);
-                    if ( start ) startMark = SDL_GetTicks();
+                    if ( start ) { startMark = SDL_GetTicks(); playBackgroundMusic((players > 1 || gameMode == MASTER) ? FAST_THEME : CHILL_THEME); }
                 }
             }
             else 
             {
-                renderStatistics( player, startMark, gameMode == TIME ? mod[TIME] : 0 );
+                renderStatistics( player, startMark, gameMode == TIME ? mod[TIME] : 0, mod[LINECAP] );
                 generateTetromino( Tqueue );
                 player.ingameProgress( Tqueue, isDrawn, scene );
                 if ( isDrawn ) {
@@ -77,9 +79,10 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                         break;
                     case CLASSIC:
                     {
-                        int tmp = player.getLine() / 10;
-                        tmp = tmp % 10 + tmp / 10 * 16;
-                        if ( tmp > mod[LEVEL]) player.setLevel( tmp + 1 );
+                        int a = mod[LEVEL] > 9, b = a * 16 > mod[LEVEL] ? 0 : mod[LEVEL] - a * 16;
+                        int tmp = a*10+b;
+                        if ( player.getLine() > tmp ) player.setLevel( mod[LEVEL] + (player.getLine() - tmp) / 10 );
+                        cout << tmp << " " << mod[LEVEL] << endl;
                         break;
                     }
                     case MYSTERY:
@@ -100,6 +103,7 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
             player.push_back( Player( mod[LEVEL], gameMode, x, y ) );
         }
     }
+    stopMusic( true );
     while ( scene != QUIT && !transIn )
     {
         renderTransition( transIn );
@@ -188,6 +192,7 @@ void settingRules( bool isSolo, int gameMode, int &activeButton, bool &adjusted,
 
 void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int mod[4]  )
 {
+    loadMenuElements();
     Texture title;
     title.loadFromFile("src/media/img/game_title.png");
     int activeButton = -1;
@@ -195,7 +200,7 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
     SDL_Event event;
     int foregroundAlphaMod = 10;
     vector<Tetromino> floating;
-    bool goSettingRules = false, adjusted = false;
+    bool adjusted = false;
     int changeMenu = scene;
     Uint32 animationMark = SDL_GetTicks();
     const int ANIMATION_DURATION = 500;
@@ -221,12 +226,6 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
                 break;
             case SOLO_MENU:
                 renderSoloMenu( mouse_x, mouse_y, activeButton );
-                // else 
-                // {
-                //     players = 1;
-                //     settingRules( true, gameMode, activeButton, adjusted, mod );
-                //     startActive = handleStartButton( mouse_x, mouse_y, WINDOW_WIDTH / 2, TILE_WIDTH * 26 );
-                // }
                 backActive = handleBackButton( mouse_x, mouse_y );
                 break;
             case SET_RULES:
@@ -280,29 +279,35 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
                 switch( scene )
                 {
                     case MAIN_MENU:
-                        if (activeButton != -1) changeMenu = activeButton + 1;
+                        if (activeButton != -1)
+                        {
+                            changeMenu = activeButton + 1;
+                            playSfx( SELECT );
+                        }
                         break;
                     case SOLO_MENU:
                         if ( backActive ) 
                         {
                             changeMenu = MAIN_MENU;
+                            playSfx( SELECT );
                         }
                         else if ( activeButton != -1 )
                         {
                             players = 1;
                             gameMode = activeButton;
                             changeMenu = SET_RULES;
+                            playSfx( SELECT );
                         }
                         break;
                     case SET_RULES:
-                        if ( backActive ) { changeMenu = (players == 1) ? SOLO_MENU : MULTI_MENU; backActive = false; }
-                        else if ( activeButton != 0 ) adjusted = true;
-                        else if ( startActive ) { changeMenu = INGAME; scene = changeMenu; }
+                        if ( backActive ) { changeMenu = (players == 1) ? SOLO_MENU : MULTI_MENU; backActive = false; playSfx( SELECT ); }
+                        else if ( activeButton != 0 ) { adjusted = true; playSfx( SELECT ); }
+                        else if ( startActive ) { changeMenu = INGAME; scene = changeMenu; playSfx( SELECT ); }
                     case MULTI_MENU:
                         // gameHandler( false, activeButton );
                         // break;
                     case SETTINGS:
-                        if ( backActive ) changeMenu = MAIN_MENU;
+                        if ( backActive ) { changeMenu = MAIN_MENU; playSfx( SELECT ); }
                         break;
                     case QUIT:
                         break;
@@ -311,6 +316,7 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
         }
         
     }
+    stopMusic( true );
     while ( scene != QUIT && !transIn ) {
         renderTransition( transIn );
         SDL_RenderPresent ( renderer );

@@ -94,6 +94,7 @@ bool Player::checkCollision( const Tetromino &tetr, int rowAdjustment, int colAd
 
 void Player::lockTetromino()
 {
+    playSfx( LOCK );
     for ( int row = 0; row < tetr.getContainerSize(); row++ )
         for ( int col = 0; col < tetr.getContainerSize(); col++ )
             if ( tetr.getCellState(row, col) != 0 )
@@ -114,6 +115,7 @@ void Player::movePieceHorizontally( bool right )
         lastMove = MOVE_LR;
         movesBeforeLock++;
         lockMark = SDL_GetTicks();
+        playSfx( MOVE );
     }
 }
 
@@ -128,6 +130,7 @@ void Player::dropPiece( bool isHardDrop, bool isGravityPull )
         tetr.updateRow( getGhostRow() );
         lockTetromino();
         holdLock = false;
+        playSfx( HARDDROP );
     }
     else
     {
@@ -140,11 +143,13 @@ void Player::dropPiece( bool isHardDrop, bool isGravityPull )
             //Resets gravity pull timer
             pullMark = SDL_GetTicks();
 
-            if ( tetr.getRow() < lowestRow ){
+            if ( tetr.getRow() < lowestRow )
+            {
                 lowestRow = tetr.getRow();
                 movesBeforeLock = 0;
-            if ( checkCollision( tetr, -1 ) ) lockMark = SDL_GetTicks();
+                if ( checkCollision( tetr, -1 ) ) lockMark = SDL_GetTicks();
             }
+            playSfx( MOVE );
         }
         else lockDelayHandler();
     }
@@ -296,6 +301,7 @@ void Player::gravityPull()
     }
     else
     {
+        if ( (tetr.getType() == I_PIECE && tetr.getRow() == START_ROW - 1) || tetr.getRow() == START_ROW ) dropPiece( false );
         int rowDrop = 10 / pullInterval + 1;
         int newPullInterval = pullInterval * rowDrop;
         if ( ( SDL_GetTicks() - pullMark ) > newPullInterval )
@@ -378,9 +384,12 @@ void Player::updateScore( int lineCleared, int delta )
     }
     else
     {
+        playSfx( LINE_CLEAR );
         combo++;
         if ( tspinState != NO_SPIN || lineCleared == 4 ) b2b ++;
+        if ( lineCleared == 4 ) playSfx( TETRIS_BONUS );
     }
+    if ( b2b > 0 || tspinState > 0 || combo > 0 ) playSfx( BONUS_POINT );
     delta = delta * ( 2 + ( b2b > 0 ) ) / 2;
     if ( combo > 0 ) delta += combo * 50;
     score += delta * level;
@@ -397,6 +406,7 @@ void Player::swapHoldPiece()
         holdLock = true;
         movesBeforeLock = 0;
         lowestRow = tetr.getRow();
+        playSfx( MOVE );
     }
 }
 
@@ -647,16 +657,4 @@ void Player::handlingKeyPress( bool &gameOver, int &scene )
             if ( keyRepeatState[K_DOWN].first == 0 ) keyRepeatState[K_DOWN].first = 2;
         }
     } else keyRepeatState[K_DOWN].first = 0;
-    
-    // if ( e.type == SDL_KEYDOWN )
-    // {
-    //     // cout << SDL_GetKeyName(e.key.keysym.sym) << endl;
-    //         //Drops
-    //         case SDLK_DOWN:
-    //         //Moves K_left or right
-    //         case SDLK_K_LEFT:
-    //         case SDLK_RIGHT:
-                // movePieceHorizontally( e.key.keysym.sym == SDLK_RIGHT );
-    //             break;
-    // }
 }
