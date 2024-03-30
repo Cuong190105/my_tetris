@@ -22,9 +22,6 @@ void generateTetromino( vector<Tetromino> &Tqueue )
     }
 }
 
-enum soloMode { CLASSIC, SPRINT, BLITZ, MASTER, MYSTERY };
-enum multiMode { SCORE, ATTACK, MYSTERY_ATTACK };
-enum modType { LEVEL, LINECAP, TIME, ACTIVATE_MYSTERY };
 void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &transIn )
 {
     // renderTransition( true );
@@ -34,7 +31,7 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
     loadRandomBackground();
     if ( players == 1 )
     {
-        Player player ( mod[LEVEL], ( WINDOW_WIDTH - BOARD_WIDTH ) / 2, ( WINDOW_HEIGHT - BOARD_HEIGHT ) / 2 ) ;
+        Player player ( mod[LEVEL], gameMode, ( WINDOW_WIDTH - BOARD_WIDTH ) / 2, ( WINDOW_HEIGHT - BOARD_HEIGHT ) / 2 ) ;
         int isDrawn = true;
         while ( !player.isGameOver() )
         {
@@ -100,7 +97,7 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
         for (int i = 0; i < players; i++)
         {
             int x = ( (2 * i + 1 ) * WINDOW_WIDTH / players - BOARD_WIDTH) / 2, y = (WINDOW_HEIGHT - BOARD_HEIGHT) / 2;
-            player.push_back( Player( mod[LEVEL], x, y ) );
+            player.push_back( Player( mod[LEVEL], gameMode, x, y ) );
         }
     }
     while ( scene != QUIT && !transIn )

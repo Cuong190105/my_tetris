@@ -6,7 +6,7 @@ using namespace std;
 
 enum Action {ROTATE, MOVE_LR, DROP};
 
-Player::Player( int _level, int _x, int _y )
+Player::Player( int _level, int _mode, int _x, int _y )
 {
     pb = PlayBoard();
     tetr = Tetromino();
@@ -14,13 +14,16 @@ Player::Player( int _level, int _x, int _y )
     holdLock = false;
     score = 0;
     line = 0;
-    level = _level;
     combo = -1;
     b2b = -1;
     lastMove = DROP;
     movesBeforeLock = 0;
     lowestRow = 21;
     x = _x; y = _y;
+    lockDelay = 500;
+    mode = _mode;
+    if (mode == MASTER) pullInterval = 1;
+    setLevel(_level);
 }
 
 Player::~Player() {}
@@ -29,7 +32,20 @@ int Player::getScore() const { return score; }
 int Player::getLine() const { return line; }
 
 int Player::getLevel() const { return level; }
-void Player::setLevel( int _level ) { level = _level; }
+void Player::setLevel( int _level )
+{
+    level = _level;
+    if (mode != MASTER && level < 20) pullInterval = pow((0.8 - (level - 1) * 0.007),level - 1) * 1000;
+    else setLockDelay();
+}
+
+void Player::setLockDelay()
+{
+    if ( mode == CLASSIC || mode == SCORE )
+    lockDelay = 500 - (level > 19 ? min(level, 25) - 19 : 0) * 50 - (level > 25 ? level - 25 : 0) * 10;
+    else if ( mode == MASTER )
+    lockDelay = 485 - min(level, 20) * 15 - (level > 20 ? level - 20 : 0) * 10;
+}
 
 void Player::terminateGame() { gameOver = true; }
 bool Player::isGameOver() { return gameOver; }
@@ -269,14 +285,7 @@ void Player::rotatePiece( bool rotateClockwise )
 
 void Player::lockDelayHandler()
 {
-    if ( movesBeforeLock >= 15 || SDL_GetTicks() - lockMark > 500 ) dropPiece( true );
-}
-
-int Player::pullInterval()
-{
-    //pullInterval = g * 1000
-    //g: Gravity - numver of row pulled per second
-    return pow( ( 0.8 - (level - 1) * 0.007 ), level - 1 ) * 1000;
+    if ( movesBeforeLock >= 15 || SDL_GetTicks() - lockMark > lockDelay ) dropPiece( true );
 }
 
 void Player::gravityPull()
@@ -285,10 +294,18 @@ void Player::gravityPull()
     {
         lockDelayHandler();
     }
-    else if ( ( SDL_GetTicks() - pullMark ) > pullInterval() )
+    else
     {
-        dropPiece( false, true );
-        pullMark = SDL_GetTicks();
+        int rowDrop = 10 / pullInterval + 1;
+        int newPullInterval = pullInterval * rowDrop;
+        if ( ( SDL_GetTicks() - pullMark ) > newPullInterval )
+        {
+            for ( int i = 0; i < rowDrop; i++)
+            {
+                dropPiece( false, true );
+            }
+            pullMark = SDL_GetTicks();
+        }
     }
 }
 
@@ -526,52 +543,120 @@ void Player::ingameProgress( const vector<Tetromino> &Tqueue, int &queuePosition
         if ( checkCollision( tetr ) ) gameOver = true;
         gravityPull();
 
-        //Handle events
-        SDL_Event event;
-        while ( SDL_PollEvent(&event) != 0 ) 
-        {
-            //Quitting game event
-            if (  event.type == SDL_QUIT )
-            {
-                gameOver = true;
-                scene = QUIT;
-                break;
-            }
-
-            if ( !gameOver ) handlingKeyPress( event );
-        }
+        if ( !gameOver ) handlingKeyPress( gameOver, scene );
     }
 }
 
-void Player::handlingKeyPress( SDL_Event &e)
+void Player::handlingKeyPress( bool &gameOver, int &scene )
 {
-    if ( e.type == SDL_KEYDOWN )
+    //Movement keys are allowed to be held for auto moving the pieces. When a key is held, it sends one input first, then auto repeat after a short delay
+    //DAS: Delay auto-shift
+    //ARR: Auto-repeat rate (Hz)
+    const int DAS = min(1000/6, lockDelay / 2), ARR = 30;
+    const int REPEAT_INTERVAL = 1000 / ARR;
+
+    //Handle events
+    SDL_Event event;
+    while ( SDL_PollEvent(&event) != 0 ) 
     {
-        // cout << SDL_GetKeyName(e.key.keysym.sym) << endl;
-        switch( e.key.keysym.sym )
+        //Quits game event
+        if (  event.type == SDL_QUIT )
         {
-            //Drops
-            case SDLK_DOWN:
-            case SDLK_SPACE:
-                dropPiece( e.key.keysym.sym == SDLK_SPACE );
-                break;
-            
-            //Moves left or right
-            case SDLK_LEFT:
-            case SDLK_RIGHT:
-                movePieceHorizontally( e.key.keysym.sym == SDLK_RIGHT );
-                break;
-            
-            //Rotates clockwise
-            case SDLK_UP:
-            case SDLK_x:
-            //Rotates counterclockwise
-            case SDLK_z:
-                rotatePiece( e.key.keysym.sym != SDLK_z );
-                break;
-            case SDLK_c:
-                swapHoldPiece();
-                break;
+            gameOver = true;
+            scene = QUIT;
+            break;
+        }
+        //Handles non-repeat keys
+        if ( event.type == SDL_KEYDOWN && event.key.repeat == 0 )
+        {
+            switch( event.key.keysym.sym )
+            {
+                case SDLK_SPACE:
+                    dropPiece( true );
+                    break;
+                //Rotates clockwise
+                case SDLK_UP:
+                case SDLK_x:
+                //Rotates counterclockwise
+                case SDLK_z:
+                    rotatePiece( event.key.keysym.sym != SDLK_z );
+                    break;
+                case SDLK_c:
+                    swapHoldPiece();
+                    break;
+            }
         }
     }
+
+    const Uint8 *keystate = SDL_GetKeyboardState(NULL);
+
+    //KEY STATES:
+    //0: Unpressed
+    //1: Pressed once, waiting for DAS
+    //2: Auto-repeat
+    //3: Hold for handling input of moving in the opposite direction.
+    if ( keystate[SDL_SCANCODE_LEFT] ) 
+    {
+        if ( keyRepeatState[K_LEFT].first == 0 )
+        {
+            movePieceHorizontally( false );
+            keyRepeatState[K_LEFT].first = 1;
+            keyRepeatState[K_LEFT].second = SDL_GetTicks();
+        }
+        else if ( keyRepeatState[K_LEFT].first == 1 && SDL_GetTicks() - keyRepeatState[K_LEFT].second > DAS ) { keyRepeatState[K_LEFT].first = 2; }
+        if ( keyRepeatState[K_LEFT].first == 2 && SDL_GetTicks() - keyRepeatState[K_LEFT].second > ARR)
+        {
+            if ( keyRepeatState[K_RIGHT].first == 1 ) keyRepeatState[K_LEFT].first = 3;
+            else
+            {
+                movePieceHorizontally( false );
+                keyRepeatState[K_LEFT].second = SDL_GetTicks();
+            }
+        }
+        else if ( keyRepeatState[K_LEFT].first == 3 && keyRepeatState[K_RIGHT].first == 0 ) keyRepeatState[K_LEFT].first = 2;
+    } else keyRepeatState[K_LEFT].first = 0;
+
+    if ( keystate[SDL_SCANCODE_RIGHT] ) 
+    {
+        if ( keyRepeatState[K_RIGHT].first == 0 )
+        {
+            movePieceHorizontally( true );
+            keyRepeatState[K_RIGHT].first = 1;
+            keyRepeatState[K_RIGHT].second = SDL_GetTicks();
+        }
+        else if ( keyRepeatState[K_RIGHT].first == 1 && SDL_GetTicks() - keyRepeatState[K_RIGHT].second > DAS ) { keyRepeatState[K_RIGHT].first = 2; }
+        if ( keyRepeatState[K_RIGHT].first == 2 && SDL_GetTicks() - keyRepeatState[K_RIGHT].second > ARR)
+        {
+            if ( keyRepeatState[K_LEFT].first == 1 ) keyRepeatState[K_RIGHT].first = 3;
+            else
+            {
+                movePieceHorizontally( true );
+                keyRepeatState[K_RIGHT].second = SDL_GetTicks();
+            }
+        }
+        else if ( keyRepeatState[K_RIGHT].first == 3 && keyRepeatState[K_LEFT].first == 0 ) keyRepeatState[K_RIGHT].first = 2;
+    } else keyRepeatState[K_RIGHT].first = 0;
+
+    
+    if ( keystate[SDL_SCANCODE_DOWN] )
+    {
+        if ( keyRepeatState[K_DOWN].first == 0 || (keyRepeatState[K_DOWN].first == 2 && SDL_GetTicks() - keyRepeatState[K_DOWN].second > ARR))
+        {
+            dropPiece( false );
+            keyRepeatState[K_DOWN].second = SDL_GetTicks();
+            if ( keyRepeatState[K_DOWN].first == 0 ) keyRepeatState[K_DOWN].first = 2;
+        }
+    } else keyRepeatState[K_DOWN].first = 0;
+    
+    // if ( e.type == SDL_KEYDOWN )
+    // {
+    //     // cout << SDL_GetKeyName(e.key.keysym.sym) << endl;
+    //         //Drops
+    //         case SDLK_DOWN:
+    //         //Moves K_left or right
+    //         case SDLK_K_LEFT:
+    //         case SDLK_RIGHT:
+                // movePieceHorizontally( e.key.keysym.sym == SDLK_RIGHT );
+    //             break;
+    // }
 }

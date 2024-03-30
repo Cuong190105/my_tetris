@@ -4,6 +4,7 @@
 #include "Texture.hpp"
 #include <SDL.h>
 
+enum KeyboardFunction { K_LEFT, K_RIGHT, K_DOWN };
 
 class Player
 {
@@ -16,16 +17,19 @@ class Player
         Tetromino hold;
         bool holdLock;
         int score, line, level;
-
+        int mode;
         //Marks the last time soft dropping current tetromino
         Uint32 pullMark;
-        
+        float pullInterval;
+        pair<int, int> keyRepeatState[3];
         /**
          * Marks the triggering point of autolock timer.
          * Timer resets when doing a move other than dropping it lower than the lowest reached row
          * Timer is cancelled when falling below the lowest reached point
          */
         Uint32 lockMark;
+
+        int lockDelay;
         //Counts the number of moves made after triggering autolock timer. After reaching 15, the timer expires immediately.
         //Counter resets when the timer is cancelled or a new piece is drawn (from the queue or hold box).
         int movesBeforeLock, lowestRow;
@@ -44,7 +48,7 @@ class Player
 
         bool gameOver;
     public:
-        Player( int _level, int _x, int _y );
+        Player( int _level, int _mode, int _x, int _y );
         ~Player();
 
         //Returns this player's score
@@ -57,6 +61,8 @@ class Player
         int getLevel() const;
 
         void setLevel( int _level );
+
+        void setLockDelay();
 
         void terminateGame();
 
@@ -115,9 +121,6 @@ class Player
          */
         void lockDelayHandler();
 
-        //Calculates gravity pulling speed
-        int pullInterval();
-
         //Pulls the tetromino down (simulating gravity)
         void gravityPull();
 
@@ -153,7 +156,12 @@ class Player
 
         void ingameProgress( const vector<Tetromino> &Tqueue, int &queuePosition, int &scene );
 
-        void handlingKeyPress( SDL_Event &e );
+        void handlingKeyPress( bool &gameOver, int &scene );
 };
+
+enum soloMode { CLASSIC, SPRINT, BLITZ, MASTER, MYSTERY };
+enum multiMode { SCORE = MYSTERY + 1, ATTACK, MYSTERY_ATTACK };
+enum modType { LEVEL, LINECAP, TIME, ACTIVATE_MYSTERY };
+
 
 #endif
