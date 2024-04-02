@@ -68,6 +68,7 @@ bool Texture::loadText( string text, TTF_Font *font, SDL_Color color )
             //Get image dimensions
             width = textSurface->w;
             height = textSurface->h;
+            SDL_SetTextureBlendMode( texture, SDL_BLENDMODE_BLEND );
         }
 
         //Get rid of old surface

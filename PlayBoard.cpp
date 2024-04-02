@@ -22,35 +22,25 @@ int PlayBoard::getCellState( int row, int col ) const
     return boardState[row][col];
 }
 
-int PlayBoard::countCompletedRow( int upperRow, int lowerRow )
+vector<int> PlayBoard::completedRow( int upperRow, int lowerRow )
 {
-    int rowCleared = 0;
+    vector<int> rowCleared;
 
     for ( int i = upperRow; i >= max( lowerRow, 0 ); i-- )
     {
         if ( find( boardState[i].begin(), boardState[i].end(), 0 ) == boardState[i].end() )
         {
-            rowCleared++;
+            rowCleared.push_back(i);
         }
     }
     return rowCleared;
 }
 
-void PlayBoard::updateBoard( int upperRow, int lowerRow )
+void PlayBoard::updateBoard( vector<int> rowCleared )
 {
-    int row_cleared = 0;
-    for ( int i = upperRow; i >= max( lowerRow, 0 ); i-- )
+    for ( int i = 0; i < rowCleared.size(); i++ )
     {
-        bool full = true;
-        for ( int j = 0; j < WIDTH_BY_TILE; j++ )
-        {
-            if ( boardState[i][j] <= 0 )
-            {
-                full = false;
-                break;
-            }
-        }
-        if ( full ) {boardState.erase( boardState.begin() + i ); row_cleared++;}
+        boardState.erase( boardState.begin() + rowCleared[i] );
+        boardState.push_back( vector<int>(10, 0) );
     }
-    for ( int i = 0; i < row_cleared; i++ ) boardState.push_back( vector<int>( 10, 0 ) );
 }

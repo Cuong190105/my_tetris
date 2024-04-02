@@ -77,4 +77,8 @@ void loadRandomBackground();
 
 void loadMenuElements();
 
+void renderResultScreen( const Player &player, Uint32 startMark, string time, bool fadeOut = false );
+
+int renderRetryScreen( bool &retryLoop, int &scene );
+
 #endif

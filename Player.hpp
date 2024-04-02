@@ -44,6 +44,11 @@ class Player
         //Tspins which don't clear any line won't be counted in b2b streak, but it don't break the streak.
         int b2b;
 
+        //Mark the time triggering bonus. Used for making animated indicators.
+        //Idx 0: Combo, 1: Tspin/Tetris(either can happen at a time) + B2B (only Tspins/Tetrises are counted for b2b), 3: All Clear
+        Uint32 bonusMark[3];
+        int bonus;
+
         //Stores last move (Rotate, move left/right, or non-locking drop)
         int lastMove;
 
@@ -63,7 +68,12 @@ class Player
 
         void setLevel( int _level );
 
+        int getMode() const;
+
         void setLockDelay();
+
+        //Adjusts all time marks after resume playing
+        void setTimeMark( Uint32 pauseMark );
 
         void terminateGame();
 
@@ -155,11 +165,20 @@ class Player
 
         void displayTetrominoQueue( vector<Tetromino> &Tqueue, int previewPieces = 5, int queuePosition = 0 );
 
+        // Draw pieces on the board;
+        void displayBoardCell();
+
+
+        void displayBonus();
+
+        void renderGameOver();
+
         void ingameProgress( const vector<Tetromino> &Tqueue, int &queuePosition, int &scene );
 
         void handlingKeyPress( bool &gameOver, int &scene );
 };
 
+enum bonusType { MINI = 1, T_SPIN = 2, B2B = 4, ALLCLEAR = 8, TETRIS = 16 };
 enum soloMode { CLASSIC, SPRINT, BLITZ, MASTER, MYSTERY };
 enum multiMode { SCORE = MYSTERY + 1, ATTACK, MYSTERY_ATTACK };
 enum modType { LEVEL, LINECAP, TIME, ACTIVATE_MYSTERY };

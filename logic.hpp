@@ -14,4 +14,6 @@ void settingRules( bool isSolo, int gameMode, int &activeButton, bool &adjusted,
 void taskManager();
 
 void menuManager( int &scene, bool &transIn, int &players, int &gameMode, int mod[4] );
+
+void pause();
 #endif

@@ -60,7 +60,7 @@ bool init()
         else 
         {
             //Create renderer
-            renderer = SDL_CreateRenderer( game_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE );
+            renderer = SDL_CreateRenderer( game_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE | SDL_RENDERER_PRESENTVSYNC );
             if ( renderer == NULL )
             {
                 cout << "Failed to create renderer" << endl;

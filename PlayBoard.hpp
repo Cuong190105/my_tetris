@@ -41,10 +41,10 @@ class PlayBoard {
          * Clears all completed rows from row lowerRow to row upperRow
          * \return number of cleared rows
          */
-        int countCompletedRow( int upperRow, int lowerRow );
+        vector<int> completedRow( int upperRow, int lowerRow );
 
         //Updates board's state & statistic (score/line cleared) whenever a tetromino locks in
-        void updateBoard( int upperRow = HEIGHT_BY_TILE - 1, int lowerRow = 0 );
+        void updateBoard( vector<int> rowCleared );
 
 };
 

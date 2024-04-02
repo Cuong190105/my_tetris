@@ -22,92 +22,243 @@ void generateTetromino( vector<Tetromino> &Tqueue )
     }
 }
 
+int handlePauseMenu()
+{
+    SDL_Rect overlay { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
+    SDL_SetRenderDrawColor( renderer, 0, 0, 0, 225 );
+    SDL_RenderFillRect( renderer, &overlay );
+    renderText( "GAME PAUSED", WINDOW_WIDTH / 2, TILE_WIDTH * 8, false, CENTER, MIDDLE, 2 );
+    enum PauseMenuButton { CONTINUE, SETTINGS, QUIT };
+    SDL_Rect buttons[3];
+    string content[] = { "CONTINUE", "SETTINGS", "BACK TO MENU" };
+    buttons[CONTINUE] = SDL_Rect { TILE_WIDTH * 28, TILE_WIDTH * 16, TILE_WIDTH * 8, TILE_WIDTH * 2};
+    buttons[SETTINGS] = SDL_Rect { TILE_WIDTH * 28, TILE_WIDTH * 19, TILE_WIDTH * 8, TILE_WIDTH * 2 };
+    buttons[QUIT] = SDL_Rect { TILE_WIDTH * 28, TILE_WIDTH * 22, TILE_WIDTH * 8, TILE_WIDTH * 2 };
+    int mouse_x, mouse_y;
+    int activeButton = -1;
+    SDL_GetMouseState( &mouse_x, &mouse_y );
+    if ( mouse_x >= TILE_WIDTH * 28 && mouse_x <= TILE_WIDTH * 36)
+    {
+        for ( int i = 0; i < 3; i++ )
+        {
+            if ( mouse_y >= buttons[i].y && mouse_y <= buttons[i].y + TILE_WIDTH * 2) { activeButton = i; break; }
+        }
+    }
+    for (int i = 0; i < 3; i++)
+    {
+        if ( activeButton == i)
+        {
+            SDL_SetRenderDrawColor( renderer, 255, 255, 255, 255 );
+            SDL_RenderFillRect( renderer, &buttons[i] );
+            renderText( content[i], buttons[i].x + buttons[i].w / 2, buttons[i].y + buttons[i].h / 2, false, CENTER, MIDDLE, 1, {0, 0, 0});
+        }
+        else
+        {
+            SDL_SetRenderDrawColor( renderer, 255, 255, 255, 0 );
+            SDL_RenderFillRect( renderer, &buttons[i] );
+            renderText( content[i], buttons[i].x + buttons[i].w / 2, buttons[i].y + buttons[i].h / 2, false, CENTER, MIDDLE, 1, {255, 255, 255});
+        }
+    }
+    return activeButton;
+}
+
 void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &transIn )
 {
-    // renderTransition( true );
-    vector<Tetromino> Tqueue;
-    Uint32 startMark;
-    bool start = false;
-    loadRandomBackground();
-    if ( players == 1 )
+    bool play = true;
+    while ( play )
     {
-        Player player ( mod[LEVEL], gameMode, ( WINDOW_WIDTH - BOARD_WIDTH ) / 2, ( WINDOW_HEIGHT - BOARD_HEIGHT ) / 2 ) ;
-        int isDrawn = true;
-        if ( gameMode == MASTER ) mod[LINECAP] == 300;
-        else if ( gameMode == CLASSIC || gameMode == BLITZ ) mod[LINECAP] = -1;
-        while ( !player.isGameOver() )
+        vector<Tetromino> Tqueue;
+        Uint32 startMark, pauseMark, resumeMark;
+        bool start = false, win = false;
+        enum pauseMenuOption { CONTINUE, SETTINGS, QUIT_PLAY };
+        loadRandomBackground();
+        if ( players == 1 )
         {
-            clearScreen();
-            bgImage.render();
-            player.displayBoard();
-            player.displayTetrominoQueue( Tqueue );
-            if ( !start ) 
+            Player player ( mod[LEVEL], gameMode, ( WINDOW_WIDTH - BOARD_WIDTH ) / 2, ( WINDOW_HEIGHT - BOARD_HEIGHT ) / 2 ) ;
+            int isDrawn = true;
+            if ( gameMode == MASTER ) mod[LINECAP] = 300;
+            else if ( gameMode == CLASSIC || gameMode == BLITZ ) mod[LINECAP] = -1;
+            while ( !player.isGameOver() )
             {
-                if ( transIn )
+                clearScreen();
+                bgImage.render();
+                player.displayBoard();
+                player.displayTetrominoQueue( Tqueue );
+                if ( !start ) 
                 {
-                    renderTransition( transIn );
-                    if ( !transIn ) startMark = SDL_GetTicks();
+                    if ( transIn )
+                    {
+                        renderTransition( transIn );
+                        if ( !transIn ) startMark = SDL_GetTicks();
+                    }
+                    else
+                    {
+                        start = displayCountdown(player.getX(), player.getY(), BOARD_WIDTH, BOARD_HEIGHT, (scene != PAUSE ? startMark : resumeMark));
+                        if ( start )
+                        {
+                            if ( scene == PAUSE ) { startMark += SDL_GetTicks() - pauseMark; player.setTimeMark( pauseMark ); scene = INGAME; }
+                            else startMark = SDL_GetTicks();
+                            playBackgroundMusic((players > 1 || gameMode == MASTER) ? FAST_THEME : CHILL_THEME);
+                        }
+                    }
+                }
+                else if ( scene != PAUSE )
+                {
+                    generateTetromino( Tqueue );
+                    player.ingameProgress( Tqueue, isDrawn, scene );
+                    if ( isDrawn ) {
+                        Tqueue.erase(Tqueue.begin());
+                        isDrawn = false;
+                    }
+                    renderStatistics( player, startMark, gameMode == TIME ? mod[TIME] : 0, mod[LINECAP] );
+                    player.displayCurrentTetromino();
+                    player.displayHeldTetromino();
+                    player.displayBonus();
+                    switch( gameMode )
+                    {
+                        case SPRINT:
+                            if ( player.getLine() >= mod[LINECAP] ) {player.terminateGame(); win = true;}
+                            break;
+                        case BLITZ:
+                            if ( SDL_GetTicks() - startMark >= mod[TIME] * 60000 ) {player.terminateGame();win = true;}
+                            break;
+                        case MASTER:
+                            if ( player.getLine() >= 300 ) {player.terminateGame();win = true;}
+                            else if ( player.getLevel() == player.getLine() / 10 ) player.setLevel( player.getLine() / 10 + 1 );
+                            break;
+                        case CLASSIC:
+                        {
+                            int a = mod[LEVEL] > 9, b = a * 16 > mod[LEVEL] ? 0 : mod[LEVEL] - a * 16;
+                            int tmp = (a*10+b) * 10;
+                            if ( player.getLine() > tmp ) player.setLevel( mod[LEVEL] + (player.getLine() - tmp) / 10 );
+                            break;
+                        }
+                        case MYSTERY:
+                            enum mysteryEvent {};
+                            break;
+                    }
+                    if ( scene == PAUSE ) { pauseMark = SDL_GetTicks(); stopMusic( false ); }
                 }
                 else
                 {
-                    start = displayCountdown(player.getX(), player.getY(), BOARD_WIDTH, BOARD_HEIGHT, startMark);
-                    if ( start ) { startMark = SDL_GetTicks(); playBackgroundMusic((players > 1 || gameMode == MASTER) ? FAST_THEME : CHILL_THEME); }
-                }
-            }
-            else 
-            {
-                renderStatistics( player, startMark, gameMode == TIME ? mod[TIME] : 0, mod[LINECAP] );
-                generateTetromino( Tqueue );
-                player.ingameProgress( Tqueue, isDrawn, scene );
-                if ( isDrawn ) {
-                    Tqueue.erase(Tqueue.begin());
-                    isDrawn = false;
-                }
-                player.displayCurrentTetromino();
-                player.displayHeldTetromino();
-                switch( gameMode )
-                {
-                    case SPRINT:
-                        if ( player.getLine() >= mod[LINECAP] ) player.terminateGame();
-                        break;
-                    case BLITZ:
-                        if ( SDL_GetTicks() - startMark >= mod[TIME] * 60000 ) player.terminateGame();
-                        break;
-                    case MASTER:
-                        if ( player.getLine() >= 300 ) player.terminateGame();
-                        else if ( player.getLevel() == player.getLine() / 10 ) player.setLevel( player.getLine() / 10 + 1 );
-                        break;
-                    case CLASSIC:
+                    renderStatistics( player, startMark + SDL_GetTicks() - pauseMark, gameMode == TIME ? mod[TIME] : 0, mod[LINECAP] );
+                    player.displayCurrentTetromino();
+                    player.displayHeldTetromino();
+                    player.displayBoard();
+                    SDL_Event e;
+                    int state = handlePauseMenu();
+                    while ( SDL_PollEvent( &e ) )
                     {
-                        int a = mod[LEVEL] > 9, b = a * 16 > mod[LEVEL] ? 0 : mod[LEVEL] - a * 16;
-                        int tmp = a*10+b;
-                        if ( player.getLine() > tmp ) player.setLevel( mod[LEVEL] + (player.getLine() - tmp) / 10 );
-                        cout << tmp << " " << mod[LEVEL] << endl;
-                        break;
+                        if ( e.type == SDL_QUIT )
+                        {
+                            play = false;
+                            player.terminateGame();
+                            scene = QUIT;
+                        }
+                        else if ( e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE ) start = false;
+                        else if ( state != -1 && e.type == SDL_MOUSEBUTTONUP && e.button.button == SDL_BUTTON_LEFT )
+                        {
+                            switch(state)
+                            {
+                                case CONTINUE:
+                                    start = false;
+                                    resumeMark = SDL_GetTicks();
+                                    break;
+                                case QUIT_PLAY:
+                                    play = false;
+                                    player.terminateGame();
+                                    scene = SOLO_MENU;
+                                    break;
+                            }
+                            playSfx( SELECT );
+                        }
                     }
-                    case MYSTERY:
-                        enum mysteryEvent {};
-                        break;
+                }
+                SDL_RenderPresent( renderer );
+            }
+            if ( scene != QUIT && scene != SOLO_MENU )
+            {
+                Uint32 endMark = SDL_GetTicks();
+                stopMusic( false );
+                if ( win ) playSfx(VICTORY);
+                else playSfx(GAMEOVER);
+
+                while ( SDL_GetTicks() - endMark <= 5000)
+                {
+                    clearScreen();
+                    bgImage.render();
+                    player.displayBoard();
+                    player.displayTetrominoQueue( Tqueue );
+                    renderStatistics( player, startMark + SDL_GetTicks() - endMark, gameMode == TIME ? mod[TIME] : 0, mod[LINECAP] );
+                    player.displayHeldTetromino();
+                    if ( win )
+                    {
+                        if ( gameMode == BLITZ ) renderText( "TIME'S UP!", player.getX() + BOARD_WIDTH / 2, player.getY() + BOARD_HEIGHT / 2, true, CENTER, MIDDLE, 3);
+                        else renderText( "LEVEL COMPLETED!", player.getX() + BOARD_WIDTH / 2, player.getY() + BOARD_HEIGHT / 2, true, CENTER, MIDDLE, 2);
+                    }
+                    SDL_RenderPresent( renderer );
+                }
+
+                string time = "";
+                int time_in_seconds = ( endMark - startMark ) / 1000;
+                if ( time_in_seconds / 60 < 10) time += '0';
+                time += to_string( time_in_seconds / 60 ) + ":";
+                if ( time_in_seconds % 60 < 10) time += '0';
+                time += to_string( time_in_seconds % 60 );
+
+                endMark = SDL_GetTicks();
+                while ( win && SDL_GetTicks() - endMark <= 10000 )
+                {
+                    clearScreen();
+                    bgImage.render();
+                    if (SDL_GetTicks() - endMark <= 9250) renderResultScreen( player, endMark, time );
+                    else renderResultScreen( player, endMark + 9250, time, true );
+                    SDL_RenderPresent( renderer );
                 }
             }
+        }
+        else
+        {
+            vector<Player> player;
+            vector<int> queuePosition( players, 0 );
+            for (int i = 0; i < players; i++)
+            {
+                int x = ( (2 * i + 1 ) * WINDOW_WIDTH / players - BOARD_WIDTH) / 2, y = (WINDOW_HEIGHT - BOARD_HEIGHT) / 2;
+                player.push_back( Player( mod[LEVEL], gameMode, x, y ) );
+            }
+        }
+        if ( scene != QUIT && scene != SOLO_MENU && scene != MULTI_MENU )
+        {
+            bool retryLoop = true;
+            SDL_Event e;
+            while(retryLoop)
+            {
+                clearScreen();
+                bgImage.render();
+                int activeButton = renderRetryScreen( retryLoop, scene );
+                SDL_RenderPresent( renderer );
+                while (SDL_PollEvent( &e ))
+                {
+                    if (e.type == SDL_QUIT) 
+                    {
+                        scene = QUIT;
+                        retryLoop = false;
+                        play = false;
+                    }
+                    else if (activeButton != -1 && e.type == SDL_MOUSEBUTTONUP && e.button.button == SDL_BUTTON_LEFT)
+                    {
+                        retryLoop = false;
+                        play = activeButton == 0;
+                    }
+                }
+            }
+        }
+        else play = false;
+        while ( scene != QUIT && !transIn )
+        {
+            renderTransition( transIn );
             SDL_RenderPresent( renderer );
         }
-    }
-    else
-    {
-        vector<Player> player;
-        vector<int> queuePosition( players, 0 );
-        for (int i = 0; i < players; i++)
-        {
-            int x = ( (2 * i + 1 ) * WINDOW_WIDTH / players - BOARD_WIDTH) / 2, y = (WINDOW_HEIGHT - BOARD_HEIGHT) / 2;
-            player.push_back( Player( mod[LEVEL], gameMode, x, y ) );
-        }
-    }
-    stopMusic( true );
-    while ( scene != QUIT && !transIn )
-    {
-        renderTransition( transIn );
-        SDL_RenderPresent( renderer );
     }
 }
 

@@ -23,7 +23,9 @@ Player::Player( int _level, int _mode, int _x, int _y )
     lockDelay = 500;
     mode = _mode;
     if (mode == MASTER) pullInterval = 1;
+    gameOver = false;
     setLevel(_level);
+    bonus = 0;
 }
 
 Player::~Player() {}
@@ -47,6 +49,17 @@ void Player::setLockDelay()
     lockDelay = 485 - min(level, 20) * 15 - (level > 20 ? level - 20 : 0) * 10;
 }
 
+void Player::setTimeMark( Uint32 pauseMark )
+{
+    Uint32 now = SDL_GetTicks();
+    pullMark += now - pauseMark;
+    lockMark += now - pauseMark;
+    bonusMark[0] += now - pauseMark;
+    bonusMark[1] += now - pauseMark;
+    bonusMark[2] += now - pauseMark;
+}
+
+int Player::getMode() const { return mode; }
 void Player::terminateGame() { gameOver = true; }
 bool Player::isGameOver() { return gameOver; }
 
@@ -101,9 +114,17 @@ void Player::lockTetromino()
             {
                 pb.modifyCell( tetr.getRow() + row, tetr.getCol() + col, tetr.getCellState(row, col) );
             }
-    int lineCleared = pb.countCompletedRow( tetr.getRow() + tetr.getContainerSize() - 1, tetr.getRow() );
-    updateScore( lineCleared );
-    pb.updateBoard( tetr.getRow() + tetr.getContainerSize() - 1, tetr.getRow() );
+    vector<int> lineCleared = pb.completedRow( tetr.getRow() + tetr.getContainerSize() - 1, tetr.getRow() );
+    bool allClear = true;
+    for ( int row = 0; row < HEIGHT_BY_TILE; row++ )
+    {
+        for ( int col = 0; col < WIDTH_BY_TILE; col++ )
+            if ( pb.getCellState( row, col ) > 0 ) { allClear = false; break; }
+        if ( !allClear ) break;
+    }
+    if ( allClear ) bonus |= ALLCLEAR;
+    updateScore( lineCleared.size() );
+    pb.updateBoard( lineCleared );
     tetr.voidPiece();
 }
 
@@ -127,6 +148,7 @@ void Player::dropPiece( bool isHardDrop, bool isGravityPull )
         //Hard drop always locks the current piece
         pieceLocked = true;
         score += (tetr.getRow() - getGhostRow()) * 2;
+        if ( getGhostRow() != tetr.getRow() ) lastMove = DROP;
         tetr.updateRow( getGhostRow() );
         lockTetromino();
         holdLock = false;
@@ -301,7 +323,7 @@ void Player::gravityPull()
     }
     else
     {
-        if ( (tetr.getType() == I_PIECE && tetr.getRow() == START_ROW - 1) || tetr.getRow() == START_ROW ) dropPiece( false );
+        if ( (tetr.getType() == I_PIECE && tetr.getRow() == START_ROW - 1) || tetr.getRow() == START_ROW ) dropPiece( false, true );
         int rowDrop = 10 / pullInterval + 1;
         int newPullInterval = pullInterval * rowDrop;
         if ( ( SDL_GetTicks() - pullMark ) > newPullInterval )
@@ -345,9 +367,9 @@ int Player::tspinCheck()
         {
             if ( tetr.getCellState( emptyCorner_row, 1) && tetr.getCellState( 1, emptyCorner_col ) )
             {
-                return TSPIN;
+                return MINI_TSPIN;
             }
-            else return MINI_TSPIN;
+            else return TSPIN;
         }
     }
     return NO_SPIN;
@@ -360,22 +382,34 @@ void Player::updateScore( int lineCleared, int delta )
     {
         case TSPIN:
             delta += (lineCleared + 1) * 400;
+            bonus |= T_SPIN | B2B;
+            bonusMark[1] = SDL_GetTicks();
             break;
         case MINI_TSPIN:
             delta += pow( 2, lineCleared ) * 200;
+            bonus |= MINI | T_SPIN | B2B;
+            bonusMark[1] = SDL_GetTicks();
             break;
         case NO_SPIN:
             switch( lineCleared )
             {
                 case 4:
-                    delta += 300;
+                    bonus |= TETRIS | B2B;
+                    delta += 800;
+                    playSfx( TETRIS_BONUS );
+                    bonusMark[1] = SDL_GetTicks();
+                    break;
                 case 3:
-                    delta += 200;
+                    delta += 500;
+                    b2b = -1;
+                    break;
                 case 2:
-                    delta += 200;
+                    delta += 300;
+                    b2b = -1;
+                    break;
                 case 1:
                     delta += 100;
-                    if (lineCleared < 4) b2b = -1;
+                    b2b = -1;
             }
     }
     if ( lineCleared == 0 )
@@ -384,12 +418,33 @@ void Player::updateScore( int lineCleared, int delta )
     }
     else
     {
-        playSfx( LINE_CLEAR );
         combo++;
+        playSfx( LINE_CLEAR );
+        if ( bonus & ALLCLEAR ) 
+        {
+            switch ( lineCleared )
+            {
+                case 4:
+                    delta += 2000;
+                    if ( b2b > 0 ) delta += 1200;
+                    break;
+                case 3:
+                    delta += 1800;
+                    break;
+                case 2:
+                    delta += 1200;
+                    break;
+                case 1:
+                    delta += 800;
+                    break;
+
+            }
+        }
+        if ( tspinState != NO_SPIN && lineCleared ) bonus |= B2B;
+        if (combo > 0) bonusMark[0] = SDL_GetTicks();
         if ( tspinState != NO_SPIN || lineCleared == 4 ) b2b ++;
-        if ( lineCleared == 4 ) playSfx( TETRIS_BONUS );
     }
-    if ( b2b > 0 || tspinState > 0 || combo > 0 ) playSfx( BONUS_POINT );
+    if ( (b2b > 0 && lineCleared) || tspinState != NO_SPIN || combo > 0 ) playSfx( BONUS_POINT );
     delta = delta * ( 2 + ( b2b > 0 ) ) / 2;
     if ( combo > 0 ) delta += combo * 50;
     score += delta * level;
@@ -418,7 +473,7 @@ void Player::displayBoard()
     SDL_RenderFillRect( renderer, &board );
 
     //Draw board gridlines
-    SDL_SetRenderDrawColor( renderer, 0x22, 0x22, 0x22, 0xFF );
+    SDL_SetRenderDrawColor( renderer, 0x11, 0x11, 0x11, 0xFF );
     for( int i = 1; i < WIDTH_BY_TILE; i++ )
     {
         SDL_RenderDrawLine( renderer, x + TILE_WIDTH * i, y, x + TILE_WIDTH * i, y + BOARD_HEIGHT );
@@ -443,8 +498,21 @@ void Player::displayBoard()
         //Bottom border
         SDL_RenderDrawLine( renderer, x + i, y + BOARD_HEIGHT + i + 1, x + BOARD_WIDTH - i, y + BOARD_HEIGHT + i + 1);
     }
+    displayBoardCell();
+}
 
-    // Draw pieces on the board;
+
+void Player::displayBoardCell()
+{
+    const  float DURATION = 3000;
+    float scale = 1;
+    int adjust = 0;
+    if ( gameOver )
+    {
+        scale = 1 + (SDL_GetTicks() - pullMark) * 2 / DURATION;
+        tileSpriteSheet.setAlphaMod( max(255 - (int)((SDL_GetTicks() - pullMark) / DURATION * 255), 0) );
+        adjust = - TILE_WIDTH * (scale - 1) / 2;
+    }
     for ( int row = 0; row < HEIGHT_BY_TILE; row++ )
     {
         for ( int col = 0; col < WIDTH_BY_TILE; col++ )
@@ -452,10 +520,11 @@ void Player::displayBoard()
             int cellState = pb.getCellState( row, col );
             if ( cellState > 0)
             {
-                tileSpriteSheet.render( x + TILE_WIDTH * col, y + BOARD_HEIGHT - TILE_WIDTH * ( row + 1 ), TILE_WIDTH, TILE_WIDTH, &tileSpriteClips[ cellState ] );
+                tileSpriteSheet.render( x + TILE_WIDTH * col + adjust, y + BOARD_HEIGHT - TILE_WIDTH * ( row + 1 ) + adjust, TILE_WIDTH * scale, TILE_WIDTH * scale, &tileSpriteClips[ cellState ] );
             }
         }
     }
+    if ( gameOver ) tileSpriteSheet.setAlphaMod( 255 );
 }
 
 void Player::displayCurrentTetromino()
@@ -554,6 +623,7 @@ void Player::ingameProgress( const vector<Tetromino> &Tqueue, int &queuePosition
         gravityPull();
 
         if ( !gameOver ) handlingKeyPress( gameOver, scene );
+
     }
 }
 
@@ -593,6 +663,9 @@ void Player::handlingKeyPress( bool &gameOver, int &scene )
                     break;
                 case SDLK_c:
                     swapHoldPiece();
+                    break;
+                case SDLK_ESCAPE:
+                    scene = PAUSE;
                     break;
             }
         }
