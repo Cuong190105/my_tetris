@@ -27,24 +27,25 @@ int handlePauseMenu()
     SDL_Rect overlay { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
     SDL_SetRenderDrawColor( renderer, 0, 0, 0, 225 );
     SDL_RenderFillRect( renderer, &overlay );
-    renderText( "GAME PAUSED", WINDOW_WIDTH / 2, TILE_WIDTH * 8, false, CENTER, MIDDLE, 2 );
-    enum PauseMenuButton { CONTINUE, SETTINGS, QUIT };
-    SDL_Rect buttons[3];
-    string content[] = { "CONTINUE", "SETTINGS", "BACK TO MENU" };
-    buttons[CONTINUE] = SDL_Rect { TILE_WIDTH * 28, TILE_WIDTH * 16, TILE_WIDTH * 8, TILE_WIDTH * 2};
-    buttons[SETTINGS] = SDL_Rect { TILE_WIDTH * 28, TILE_WIDTH * 19, TILE_WIDTH * 8, TILE_WIDTH * 2 };
-    buttons[QUIT] = SDL_Rect { TILE_WIDTH * 28, TILE_WIDTH * 22, TILE_WIDTH * 8, TILE_WIDTH * 2 };
+    renderText( "GAME PAUSED", WINDOW_WIDTH / 2, LENGTH_UNIT * 8, false, CENTER, MIDDLE, 2 );
+    enum PauseMenuButton { CONTINUE, RETRY, SETTINGS, QUIT };
+    SDL_Rect buttons[4];
+    string content[] = { "CONTINUE", "RETRY", "SETTINGS", "BACK TO MENU" };
+    buttons[CONTINUE] = SDL_Rect { LENGTH_UNIT * 28, LENGTH_UNIT * 16, LENGTH_UNIT * 8, LENGTH_UNIT * 2};
+    buttons[RETRY] = SDL_Rect { LENGTH_UNIT * 28, LENGTH_UNIT * 19, LENGTH_UNIT * 8, LENGTH_UNIT * 2 };
+    buttons[SETTINGS] = SDL_Rect { LENGTH_UNIT * 28, LENGTH_UNIT * 22, LENGTH_UNIT * 8, LENGTH_UNIT * 2 };
+    buttons[QUIT] = SDL_Rect { LENGTH_UNIT * 28, LENGTH_UNIT * 25, LENGTH_UNIT * 8, LENGTH_UNIT * 2};
     int mouse_x, mouse_y;
     int activeButton = -1;
     SDL_GetMouseState( &mouse_x, &mouse_y );
-    if ( mouse_x >= TILE_WIDTH * 28 && mouse_x <= TILE_WIDTH * 36)
+    if ( mouse_x >= LENGTH_UNIT * 28 && mouse_x <= LENGTH_UNIT * 36)
     {
-        for ( int i = 0; i < 3; i++ )
+        for ( int i = 0; i < 4; i++ )
         {
-            if ( mouse_y >= buttons[i].y && mouse_y <= buttons[i].y + TILE_WIDTH * 2) { activeButton = i; break; }
+            if ( mouse_y >= buttons[i].y && mouse_y <= buttons[i].y + LENGTH_UNIT * 2) { activeButton = i; break; }
         }
     }
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < 4; i++)
     {
         if ( activeButton == i)
         {
@@ -65,12 +66,14 @@ int handlePauseMenu()
 void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &transIn )
 {
     bool play = true;
+    SDL_Texture *foreground = SDL_CreateTexture( renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, WINDOW_WIDTH, WINDOW_HEIGHT );
+    SDL_SetTextureBlendMode( foreground, SDL_BLENDMODE_BLEND );
     while ( play )
     {
         vector<Tetromino> Tqueue;
         Uint32 startMark, pauseMark, resumeMark;
         bool start = false, win = false;
-        enum pauseMenuOption { CONTINUE, SETTINGS, QUIT_PLAY };
+        enum pauseMenuOption { CONTINUE, RETRY, SETTINGS, QUIT_PLAY };
         loadRandomBackground();
         if ( players == 1 )
         {
@@ -82,6 +85,12 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
             {
                 clearScreen();
                 bgImage.render();
+                if ( start )
+                {
+                    SDL_SetRenderTarget( renderer, foreground );
+                    SDL_SetRenderDrawColor( renderer, 0, 0, 0, 0 );
+                    SDL_RenderClear( renderer );
+                }
                 player.displayBoard();
                 player.displayTetrominoQueue( Tqueue );
                 if ( !start ) 
@@ -93,11 +102,10 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                     }
                     else
                     {
-                        start = displayCountdown(player.getX(), player.getY(), BOARD_WIDTH, BOARD_HEIGHT, (scene != PAUSE ? startMark : resumeMark));
+                        start = displayCountdown(player.getX(), player.getY(), BOARD_WIDTH, BOARD_HEIGHT, startMark);
                         if ( start )
                         {
-                            if ( scene == PAUSE ) { startMark += SDL_GetTicks() - pauseMark; player.setTimeMark( pauseMark ); scene = INGAME; }
-                            else startMark = SDL_GetTicks();
+                            startMark = SDL_GetTicks();
                             playBackgroundMusic((players > 1 || gameMode == MASTER) ? FAST_THEME : CHILL_THEME);
                         }
                     }
@@ -114,10 +122,14 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                     player.displayCurrentTetromino();
                     player.displayHeldTetromino();
                     player.displayBonus();
+                    SDL_SetRenderTarget( renderer, NULL );
+                    if ( gameMode == MYSTERY && player.getMysteryEvent() == UPSIDE_DOWN ) SDL_RenderCopyEx( renderer, foreground, NULL, NULL, 180, NULL, SDL_FLIP_NONE );
+                    else SDL_RenderCopy( renderer, foreground, NULL, NULL );
                     switch( gameMode )
                     {
                         case SPRINT:
                             if ( player.getLine() >= mod[LINECAP] ) {player.terminateGame(); win = true;}
+                            // if ( player.getLine() >= 1 ) {player.terminateGame(); win = true;}
                             break;
                         case BLITZ:
                             if ( SDL_GetTicks() - startMark >= mod[TIME] * 60000 ) {player.terminateGame();win = true;}
@@ -134,7 +146,7 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                             break;
                         }
                         case MYSTERY:
-                            enum mysteryEvent {};
+                            
                             break;
                     }
                     if ( scene == PAUSE ) { pauseMark = SDL_GetTicks(); stopMusic( false ); }
@@ -142,9 +154,12 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                 else
                 {
                     renderStatistics( player, startMark + SDL_GetTicks() - pauseMark, gameMode == TIME ? mod[TIME] : 0, mod[LINECAP] );
-                    player.displayCurrentTetromino();
                     player.displayHeldTetromino();
                     player.displayBoard();
+                    player.displayCurrentTetromino();
+                    SDL_SetRenderTarget( renderer, NULL );
+                    if ( gameMode == MYSTERY && player.getMysteryEvent() == UPSIDE_DOWN ) SDL_RenderCopyEx( renderer, foreground, NULL, NULL, 180, NULL, SDL_FLIP_NONE );
+                    else SDL_RenderCopy( renderer, foreground, NULL, NULL );
                     SDL_Event e;
                     int state = handlePauseMenu();
                     while ( SDL_PollEvent( &e ) )
@@ -155,14 +170,19 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                             player.terminateGame();
                             scene = QUIT;
                         }
-                        else if ( e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE ) start = false;
+                        else if ( e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE ) scene = INGAME;
                         else if ( state != -1 && e.type == SDL_MOUSEBUTTONUP && e.button.button == SDL_BUTTON_LEFT )
                         {
                             switch(state)
                             {
                                 case CONTINUE:
+                                    scene = INGAME;
+                                    break;
+                                case RETRY:
+                                    player.terminateGame();
                                     start = false;
-                                    resumeMark = SDL_GetTicks();
+                                    stopMusic( false );
+                                    scene = INGAME;
                                     break;
                                 case QUIT_PLAY:
                                     play = false;
@@ -173,10 +193,16 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                             playSfx( SELECT );
                         }
                     }
+                    if ( start && scene == INGAME )
+                    {
+                        resumeMusic();
+                        player.setTimeMark( pauseMark );
+                        startMark += SDL_GetTicks() - pauseMark;
+                    }
                 }
                 SDL_RenderPresent( renderer );
             }
-            if ( scene != QUIT && scene != SOLO_MENU )
+            if ( start && scene != QUIT && scene != SOLO_MENU )
             {
                 Uint32 endMark = SDL_GetTicks();
                 stopMusic( false );
@@ -187,15 +213,19 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                 {
                     clearScreen();
                     bgImage.render();
+                    SDL_SetRenderTarget( renderer, foreground );
+                    clearScreen();
                     player.displayBoard();
                     player.displayTetrominoQueue( Tqueue );
                     renderStatistics( player, startMark + SDL_GetTicks() - endMark, gameMode == TIME ? mod[TIME] : 0, mod[LINECAP] );
                     player.displayHeldTetromino();
                     if ( win )
                     {
-                        if ( gameMode == BLITZ ) renderText( "TIME'S UP!", player.getX() + BOARD_WIDTH / 2, player.getY() + BOARD_HEIGHT / 2, true, CENTER, MIDDLE, 3);
-                        else renderText( "LEVEL COMPLETED!", player.getX() + BOARD_WIDTH / 2, player.getY() + BOARD_HEIGHT / 2, true, CENTER, MIDDLE, 2);
+                        if ( gameMode == BLITZ ) renderText( "TIME'S UP!", player.getX() + BOARD_WIDTH / 2, player.getY() + BOARD_HEIGHT / 2 - LENGTH_UNIT * 3, true, CENTER, MIDDLE, 3);
+                        else renderText( "LEVEL COMPLETED!", player.getX() + BOARD_WIDTH / 2, player.getY() + BOARD_HEIGHT / 2 - LENGTH_UNIT * 3, true, CENTER, MIDDLE, 2);
                     }
+                    SDL_SetRenderTarget( renderer, NULL );
+                    SDL_RenderCopy( renderer, foreground, NULL, NULL );
                     SDL_RenderPresent( renderer );
                 }
 
@@ -206,15 +236,39 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                 if ( time_in_seconds % 60 < 10) time += '0';
                 time += to_string( time_in_seconds % 60 );
 
+
+                endMark = SDL_GetTicks();
+                while ( SDL_GetTicks() - endMark < 500 )
+                {
+                    clearScreen();
+                    bgImage.render();
+                    SDL_SetRenderTarget( renderer, NULL );
+                    SDL_SetTextureAlphaMod( foreground, 255 * max((int)( 500 - SDL_GetTicks() + endMark ), 0) / 500 );
+                    SDL_RenderCopy( renderer, foreground, NULL, NULL );
+                    SDL_RenderPresent( renderer );
+                }
+
                 endMark = SDL_GetTicks();
                 while ( win && SDL_GetTicks() - endMark <= 10000 )
                 {
                     clearScreen();
                     bgImage.render();
-                    if (SDL_GetTicks() - endMark <= 9250) renderResultScreen( player, endMark, time );
-                    else renderResultScreen( player, endMark + 9250, time, true );
+                    SDL_SetRenderTarget( renderer, foreground );
+                    clearScreen();
+                    renderResultScreen(player, endMark, time );
+                    SDL_SetRenderTarget( renderer, NULL );
+                    if (SDL_GetTicks() - endMark <= 500)
+                    {
+                        SDL_SetTextureAlphaMod( foreground, min(255 * (int)(SDL_GetTicks() - endMark) / 500, 255) );
+                    }
+                    else if ( SDL_GetTicks() - endMark > 9500 )
+                    {
+                        SDL_SetTextureAlphaMod( foreground, max(255 * (int)(10000 - SDL_GetTicks() + endMark) / 500, 0) );
+                    }
+                    SDL_RenderCopy( renderer, foreground, NULL, NULL );
                     SDL_RenderPresent( renderer );
                 }
+
             }
         }
         else
@@ -227,15 +281,24 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                 player.push_back( Player( mod[LEVEL], gameMode, x, y ) );
             }
         }
-        if ( scene != QUIT && scene != SOLO_MENU && scene != MULTI_MENU )
+        if ( start && scene != QUIT && scene != SOLO_MENU && scene != MULTI_MENU )
         {
             bool retryLoop = true;
             SDL_Event e;
+            Uint32 mark = SDL_GetTicks();
             while(retryLoop)
             {
                 clearScreen();
                 bgImage.render();
+                SDL_SetRenderTarget( renderer, foreground );
+                clearScreen();
                 int activeButton = renderRetryScreen( retryLoop, scene );
+                SDL_SetRenderTarget( renderer, NULL );
+                if (SDL_GetTicks() - mark < 500)
+                {
+                    SDL_SetTextureAlphaMod( foreground, 255 * (SDL_GetTicks() - mark) / 500 );
+                }
+                SDL_RenderCopy( renderer, foreground, NULL, NULL );
                 SDL_RenderPresent( renderer );
                 while (SDL_PollEvent( &e ))
                 {
@@ -253,13 +316,18 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                 }
             }
         }
-        else play = false;
+        else if (start) play = false;
+        SDL_SetRenderTarget( renderer, NULL );
         while ( scene != QUIT && !transIn )
         {
+            bgImage.render();
+            SDL_RenderCopy( renderer, foreground, NULL, NULL );
             renderTransition( transIn );
             SDL_RenderPresent( renderer );
         }
     }
+    SDL_DestroyTexture( foreground );
+    foreground = NULL;
 }
 
 int adjustmentButton( int x, int y, bool disableLeft, bool disableRight )
@@ -267,13 +335,13 @@ int adjustmentButton( int x, int y, bool disableLeft, bool disableRight )
     int mouse_x, mouse_y;
     renderAdjustmentButton( x, y, disableLeft, disableRight );
     SDL_GetMouseState( &mouse_x, &mouse_y );
-    if ( mouse_y >= y && mouse_y <= y + TILE_WIDTH )
+    if ( mouse_y >= y && mouse_y <= y + LENGTH_UNIT )
     {
-        if ( (!disableLeft) && (mouse_x >= x + LEFT_ADJUSTMENTBUTTON_X) && (mouse_x <= x + LEFT_ADJUSTMENTBUTTON_X + TILE_WIDTH) )
+        if ( (!disableLeft) && (mouse_x >= x + LEFT_ADJUSTMENTBUTTON_X) && (mouse_x <= x + LEFT_ADJUSTMENTBUTTON_X + LENGTH_UNIT) )
         {
             return -1;
         }
-        if ( (!disableRight) && (mouse_x >= x + RIGHT_ADJUSTMENTBUTTON_X) && (mouse_x <= x + RIGHT_ADJUSTMENTBUTTON_X + TILE_WIDTH) )
+        if ( (!disableRight) && (mouse_x >= x + RIGHT_ADJUSTMENTBUTTON_X) && (mouse_x <= x + RIGHT_ADJUSTMENTBUTTON_X + LENGTH_UNIT) )
         {
             return 1;
         }
@@ -283,13 +351,13 @@ int adjustmentButton( int x, int y, bool disableLeft, bool disableRight )
 
 void settingRules( bool isSolo, int gameMode, int &activeButton, bool &adjusted, int mod[4] )
 {
-    SDL_Rect rect { TILE_WIDTH * 12, TILE_WIDTH * 6, TILE_WIDTH * 40, TILE_WIDTH * 24 };
+    SDL_Rect rect { LENGTH_UNIT * 12, LENGTH_UNIT * 6, LENGTH_UNIT * 40, LENGTH_UNIT * 24 };
     SDL_SetRenderDrawColor( renderer, 0, 0, 0, 225 );
     SDL_RenderFillRect( renderer, &rect);
     int mouse_x, mouse_y;
     if ( isSolo )
     {
-        renderText( soloGameModeName[gameMode], WINDOW_WIDTH / 2, TILE_WIDTH * 12, true, CENTER, BOTTOM, 4, SDL_Color {255, 255, 255} );
+        renderText( soloGameModeName[gameMode], WINDOW_WIDTH / 2, LENGTH_UNIT * 12, true, CENTER, BOTTOM, 4, SDL_Color {255, 255, 255} );
         mod[ACTIVATE_MYSTERY] = 0;
         if ( adjusted )
         {
@@ -300,44 +368,44 @@ void settingRules( bool isSolo, int gameMode, int &activeButton, bool &adjusted,
         switch( gameMode )
         {
             case CLASSIC:
-                renderText( "INITIAL SPEED LEVEL" , WINDOW_WIDTH / 2, TILE_WIDTH * 14, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                renderText( to_string( mod[LEVEL] ), WINDOW_WIDTH / 2, TILE_WIDTH * 16, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                activeButton = adjustmentButton( WINDOW_WIDTH / 2, TILE_WIDTH * 16, mod[LEVEL] == 1, mod[LEVEL] == 19) * (LEVEL + 1);
+                renderText( "INITIAL SPEED LEVEL" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
+                renderText( to_string( mod[LEVEL] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 16, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
+                activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 16, mod[LEVEL] == 1, mod[LEVEL] == 19) * (LEVEL + 1);
                 break;
             case SPRINT:
                 mod[LEVEL] = 1;
                 if (mod[LINECAP] < 40 || mod[LINECAP] > 100) {mod[LINECAP] = 40;}
-                renderText( "SET LINE TARGET" , WINDOW_WIDTH / 2, TILE_WIDTH * 14, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                renderText( to_string( mod[LINECAP] ), WINDOW_WIDTH / 2, TILE_WIDTH * 16, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                activeButton = adjustmentButton( WINDOW_WIDTH / 2, TILE_WIDTH * 16, mod[LINECAP] == 40, mod[LINECAP] == 100 ) * (LINECAP + 1);
+                renderText( "SET LINE TARGET" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
+                renderText( to_string( mod[LINECAP] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 16, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
+                activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 16, mod[LINECAP] == 40, mod[LINECAP] == 100 ) * (LINECAP + 1);
                 break;
             case BLITZ:
                 mod[LEVEL] = 1;
-                renderText( "SET TIME LIMIT" , WINDOW_WIDTH / 2, TILE_WIDTH * 14, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                renderText( to_string( mod[TIME] ), WINDOW_WIDTH / 2, TILE_WIDTH * 16, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                activeButton = adjustmentButton( WINDOW_WIDTH / 2, TILE_WIDTH * 16, mod[TIME] == 2, mod[TIME] == 10 ) * (TIME + 1);
+                renderText( "SET TIME LIMIT" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
+                renderText( to_string( mod[TIME] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 16, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
+                activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 16, mod[TIME] == 2, mod[TIME] == 10 ) * (TIME + 1);
                 break;
             case MASTER:
-                renderText( "INITIAL SPEED LEVEL" , WINDOW_WIDTH / 2, TILE_WIDTH * 14, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                renderText( "M" + to_string( mod[LEVEL] ), WINDOW_WIDTH / 2, TILE_WIDTH * 16, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                activeButton = adjustmentButton( WINDOW_WIDTH / 2, TILE_WIDTH * 16, mod[LEVEL] == 1, mod[LEVEL] == 30 ) * (LEVEL + 1);
+                renderText( "INITIAL SPEED LEVEL" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
+                renderText( "M" + to_string( mod[LEVEL] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 16, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
+                activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 16, mod[LEVEL] == 1, mod[LEVEL] == 30 ) * (LEVEL + 1);
                 break;
             case MYSTERY:
                 mod[ACTIVATE_MYSTERY] = 1;
                 if (mod[LINECAP] != -1 && mod[LINECAP] != 150) mod[LINECAP] = 150;
-                renderText( "GO ENDLESS?" , WINDOW_WIDTH / 2, TILE_WIDTH * 14, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                renderText( mod[LINECAP] == -1 ? "Endless" : to_string( mod[LINECAP] ), WINDOW_WIDTH / 2, TILE_WIDTH * 16, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                activeButton = adjustmentButton( WINDOW_WIDTH / 2, TILE_WIDTH * 16, mod[LINECAP] == 150, mod[LINECAP] == -1 ) * (LINECAP + 1);
+                renderText( "GO ENDLESS?" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
+                renderText( mod[LINECAP] == -1 ? "Endless" : to_string( mod[LINECAP] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 16, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
+                activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 16, mod[LINECAP] == 150, mod[LINECAP] == -1 ) * (LINECAP + 1);
 
-                renderText( "INITIAL SPEED LEVEL" , WINDOW_WIDTH / 2, TILE_WIDTH * 20, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                renderText( to_string( mod[LEVEL] ), WINDOW_WIDTH / 2, TILE_WIDTH * 22, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                activeButton = adjustmentButton( WINDOW_WIDTH / 2, TILE_WIDTH * 22, mod[LEVEL] == 1, mod[LEVEL] == 15 ) * (LEVEL + 1);
+                renderText( "INITIAL SPEED LEVEL" , WINDOW_WIDTH / 2, LENGTH_UNIT * 20, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
+                renderText( to_string( mod[LEVEL] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 22, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
+                activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 22, mod[LEVEL] == 1, mod[LEVEL] == 15 ) * (LEVEL + 1);
                 break;
         }
     }
     else
     {
-        renderText( soloGameModeName[gameMode], 0, TILE_WIDTH * 10, true, CENTER, TOP, 4, SDL_Color {255, 255, 255} );
+        renderText( soloGameModeName[gameMode], 0, LENGTH_UNIT * 10, true, CENTER, TOP, 4, SDL_Color {255, 255, 255} );
     }
 }
 
@@ -381,7 +449,7 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
                 break;
             case SET_RULES:
                 settingRules( true, gameMode, activeButton, adjusted, mod );
-                startActive = handleStartButton( mouse_x, mouse_y, WINDOW_WIDTH / 2, TILE_WIDTH * 26 );
+                startActive = handleStartButton( mouse_x, mouse_y, WINDOW_WIDTH / 2, LENGTH_UNIT * 26 );
                 backActive = handleBackButton( mouse_x, mouse_y );
                 break;
 

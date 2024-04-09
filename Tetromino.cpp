@@ -14,16 +14,10 @@ Tetromino::Tetromino( int _type, int row, int col )
     currentCol = col;
     //I pieces spawn 1 row lower than usual
     currentRow = row - ( _type == I_PIECE );
-    if (_type == I_PIECE || _type == O_PIECE )
-    {
-        state = vector<vector<int>>( 4, vector<int>(4, 0) );
-        containerSize = 4;
-    }
-    else
-    {
-        state = vector<vector<int>>( 3, vector<int>( 3, 0 ) );
-        containerSize = 3;
-    }
+    if (_type == BOMB_PIECE)state = vector<vector<int>>( 1, vector<int>(1, BOMB_PIECE) );
+    else if (_type == I_PIECE || _type == O_PIECE ) state = vector<vector<int>>( 4, vector<int>(4, 0) );
+    else state = vector<vector<int>>( 3, vector<int>( 3, 0 ) );
+    containerSize = state.size();
     switch ( _type )
     {
         // I piece
@@ -139,4 +133,42 @@ void Tetromino::updateRow( int row )
 void Tetromino::updateRotationState( int newState )
 {
     rotationState = newState;
+}
+
+void Tetromino::makeItGiant()
+{
+    vector<vector<int>> newState ( containerSize * 2, vector<int>(containerSize * 2) );
+    for (int i = 0; i < containerSize; i++)
+    {
+        for (int j = 0; j < containerSize; j++)
+        {
+            if (state[i][j] > 0)
+            {
+                newState[2*i][2*j] = state[i][j];
+                newState[2*i+1][2*j] = state[i][j];
+                newState[2*i][2*j+1] = state[i][j];
+                newState[2*i+1][2*j+1] = state[i][j];
+            }
+        }
+    }
+    currentCol -= containerSize - 1;
+    currentRow -= containerSize;
+    containerSize *= 2;
+}
+
+void Tetromino::corruptPiece()
+{
+    int voidCell = rand() % 4 + 1;
+    int row = 0, col = 0;
+    while (voidCell > 0)
+    {
+        if (col == containerSize)
+        {
+            col = 0;
+            row++;
+        }
+        if (row == containerSize) row=0;
+        if (state[row][col] != 0) voidCell--;
+    }
+    
 }

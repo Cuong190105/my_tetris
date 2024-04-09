@@ -22,25 +22,49 @@ int PlayBoard::getCellState( int row, int col ) const
     return boardState[row][col];
 }
 
-vector<int> PlayBoard::completedRow( int upperRow, int lowerRow )
+int PlayBoard::completedRow( int upperRow, int lowerRow )
 {
-    vector<int> rowCleared;
-
+    int rowCleared = 0;
     for ( int i = upperRow; i >= max( lowerRow, 0 ); i-- )
     {
         if ( find( boardState[i].begin(), boardState[i].end(), 0 ) == boardState[i].end() )
         {
-            rowCleared.push_back(i);
+            rowCleared++;
+            for ( int j = 0; j < WIDTH_BY_TILE; j++ )
+            {
+                boardState[i][j] = CLEAR;
+            }
         }
     }
     return rowCleared;
 }
 
-void PlayBoard::updateBoard( vector<int> rowCleared )
+void PlayBoard::deleteClearedCell()
 {
-    for ( int i = 0; i < rowCleared.size(); i++ )
+    vector<int> fallRow(WIDTH_BY_TILE, 0);
+    for ( int i = 0; i < HEIGHT_BY_TILE; i++ )
     {
-        boardState.erase( boardState.begin() + rowCleared[i] );
-        boardState.push_back( vector<int>(10, 0) );
+        for ( int j = 0; j < WIDTH_BY_TILE; j++ )
+        {
+            if ( boardState[i][j] == CLEAR) fallRow[j]++;
+            else if ( fallRow[j] > 0 ) swap( boardState[i][j], boardState[i-fallRow[j]][j]);
+        }
     }
+    for ( int i = 0; i < WIDTH_BY_TILE; i++)
+    {
+        for (int j = 0; j < fallRow[i]; j++)
+        {
+            boardState[HEIGHT_BY_TILE - 1 - j][i] = 0;
+        }
+    }
+}
+
+void PlayBoard::addRow( int pos )
+{
+    boardState.insert( boardState.begin() + pos, vector<int>(WIDTH_BY_TILE, 0) );
+}
+
+void PlayBoard::removeRow( int pos )
+{
+    boardState.erase( boardState.begin() + pos );
 }

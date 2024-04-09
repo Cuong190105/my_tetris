@@ -125,6 +125,11 @@ void loadMedia()
 		    tileSpriteClips[ i + 4 ].y = 300;
 		    tileSpriteClips[ i + 4 ].w = 300;
 		    tileSpriteClips[ i + 4 ].h = 300;
+
+            tileSpriteClips[ i + 8 ].x = 300 * i;
+		    tileSpriteClips[ i + 8 ].y = 600;
+		    tileSpriteClips[ i + 8 ].w = 300;
+		    tileSpriteClips[ i + 8 ].h = 300;
         }
     }
 

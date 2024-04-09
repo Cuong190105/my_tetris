@@ -7,8 +7,6 @@ using namespace std;
 const int START_ROW = 20;
 const int START_COL = 3;
 
-//7 types of tetromino block
-enum Ttype { I_PIECE = 1, J_PIECE, L_PIECE, O_PIECE, S_PIECE, Z_PIECE, T_PIECE };
 
 class Tetromino {
     private:
@@ -77,6 +75,11 @@ class Tetromino {
 
         //Modifies rotationState
         void updateRotationState( int newState );
+
+        //Turns a tetromino to its giant version
+        void makeItGiant();
+        
+        void corruptPiece();
 };
 
 #endif

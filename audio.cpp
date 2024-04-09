@@ -44,3 +44,13 @@ void stopMusic( bool fade )
     if (!fade) Mix_HaltMusic();
     else Mix_FadeOutMusic(500);
 }
+
+void pauseMusic()
+{
+    Mix_PauseMusic();
+}
+
+void resumeMusic()
+{
+    Mix_ResumeMusic();
+}

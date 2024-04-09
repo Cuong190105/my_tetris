@@ -45,15 +45,15 @@ void renderStatistics( const Player& player, Uint32 startMark, int countDownMark
     //PRIMARY_TEXT (alignment follows TITLE)
     //-----LINE_SPACING-----
 
-    // TITLE_HEIGHT = TILE_WIDTH;
-    // LINE_SPACING = TILE_WIDTH / 2;
+    // TITLE_HEIGHT = LENGTH_UNIT;
+    // LINE_SPACING = LENGTH_UNIT / 2;
 
-    const int SIDE_PADDING = TILE_WIDTH;
-    const int BOX_HEIGHT = TILE_WIDTH * 3;
+    const int SIDE_PADDING = LENGTH_UNIT;
+    const int BOX_HEIGHT = LENGTH_UNIT * 3;
     const double PRIMARY_TEXT_SCALE = 3 / 2.0;
     
     //Relative position of text in textbox
-    const int PRIMARY_TEXT_Y = TILE_WIDTH;
+    const int PRIMARY_TEXT_Y = LENGTH_UNIT;
     const int TITLE_Y = 0;
 
     //Textbox's left/right (depends on its textbox) side
@@ -105,7 +105,7 @@ bool displayCountdown( int x, int y, int w, int h, Uint32 startMark)
 
 void clearScreen()
 {
-    SDL_SetRenderDrawColor( renderer, 0x00, 0x00, 0x00, 0xFF );
+    SDL_SetRenderDrawColor( renderer, 0, 0, 0, 0 );
     SDL_RenderClear( renderer );
 }
 
@@ -170,7 +170,7 @@ void renderMainMenuButton( int mouse_x, int mouse_y, int &activeButton )
         SDL_RenderFillRect( renderer, &buttonBox[i] );
 
         SDL_Color color { 255 - buttonHighlightState[i] , 255 - buttonHighlightState[i] , 255 - buttonHighlightState[i]  };
-        renderText( buttonText[i], buttonBox[i].x + TILE_WIDTH, buttonBox[i].y +  buttonBox[i].h / 2, true, LEFT, MIDDLE, 2, color );
+        renderText( buttonText[i], buttonBox[i].x + LENGTH_UNIT, buttonBox[i].y +  buttonBox[i].h / 2, true, LEFT, MIDDLE, 2, color );
     }
 }
 
@@ -274,13 +274,13 @@ void renderFloatingTetromino( vector<Tetromino> &floating )
 
 void renderGameTitle( Texture& title)
 {
-    title.render( TILE_WIDTH * 4, TILE_WIDTH * 3, TILE_WIDTH * 25, TILE_WIDTH * 14 );
+    title.render( LENGTH_UNIT * 4, LENGTH_UNIT * 3, LENGTH_UNIT * 25, LENGTH_UNIT * 14 );
 }
 
 bool handleStartButton( int mouse_x, int mouse_y, int center_x, int middle_y )
 {
     bool isActive = false;
-    int width = 12 * TILE_WIDTH, height = 2 * TILE_WIDTH;
+    int width = 12 * LENGTH_UNIT, height = 2 * LENGTH_UNIT;
     short backalpha = 0;
     SDL_Rect hitbox { center_x - width / 2, middle_y - height / 2, width, height };
     if ( mouse_x >= hitbox.x && mouse_x <= hitbox.x + hitbox.w && mouse_y >= hitbox.y && mouse_y <= hitbox.y + hitbox.h )
@@ -298,8 +298,8 @@ bool handleStartButton( int mouse_x, int mouse_y, int center_x, int middle_y )
 bool handleBackButton( int mouse_x, int mouse_y )
 {
     bool isActive = false;
-    int left_x = 2 * TILE_WIDTH, top_y = WINDOW_HEIGHT - 4 * TILE_WIDTH;
-    int width = 4 * TILE_WIDTH, height = 2 * TILE_WIDTH;
+    int left_x = 2 * LENGTH_UNIT, top_y = WINDOW_HEIGHT - 4 * LENGTH_UNIT;
+    int width = 4 * LENGTH_UNIT, height = 2 * LENGTH_UNIT;
     short backalpha = 0;
     if ( mouse_x >= left_x && mouse_x <= left_x + width && mouse_y >= top_y && mouse_y <= top_y + height )
     {
@@ -319,7 +319,7 @@ const string soloGameModeName[] = { "CLASSIC", "SPRINT", "BLITZ", "MASTER", "MYS
 SDL_Rect soloMenuButtonBox[SOLO_MENU_BUTTONS];
 void renderSoloMenu( int mouse_x, int mouse_y, int &activeButton )
 {
-    renderText( "SELECT GAME MODE", TILE_WIDTH * 4, TILE_WIDTH * 6, true, LEFT, BOTTOM, 3 );
+    renderText( "SELECT GAME MODE", LENGTH_UNIT * 4, LENGTH_UNIT * 6, true, LEFT, BOTTOM, 3 );
     if ( mouse_x >= SOLO_MENU_BUTTON_X && mouse_x <= SOLO_MENU_BUTTON_X + SOLO_MENU_BUTTON_WIDTH )
     {
         for ( int i = 0; i < SOLO_MENU_BUTTONS; i++ )
@@ -346,18 +346,18 @@ void renderSoloMenu( int mouse_x, int mouse_y, int &activeButton )
             SDL_RenderFillRect( renderer, &border );
 
             SDL_SetRenderDrawColor( renderer, 0, 0, 0, 200 );
-            SDL_Rect descPanel { TILE_WIDTH * 37, TILE_WIDTH * 8, TILE_WIDTH * 24, TILE_WIDTH * 22 };
+            SDL_Rect descPanel { LENGTH_UNIT * 37, LENGTH_UNIT * 8, LENGTH_UNIT * 24, LENGTH_UNIT * 22 };
             SDL_RenderFillRect( renderer, &descPanel );
-            renderText( "DESCRIPTION", TILE_WIDTH * 40, TILE_WIDTH * 14, true, LEFT, BOTTOM, 3 );
-            renderText( soloGameModeName[i] + "Description", TILE_WIDTH * 40, TILE_WIDTH * 15, false, LEFT, TOP );
-            renderText( "HIGH SCORE", TILE_WIDTH * 40, TILE_WIDTH * 22, true, LEFT, BOTTOM, 3 );
+            renderText( "DESCRIPTION", LENGTH_UNIT * 40, LENGTH_UNIT * 14, true, LEFT, BOTTOM, 3 );
+            renderText( soloGameModeName[i] + "Description", LENGTH_UNIT * 40, LENGTH_UNIT * 15, false, LEFT, TOP );
+            renderText( "HIGH SCORE", LENGTH_UNIT * 40, LENGTH_UNIT * 22, true, LEFT, BOTTOM, 3 );
             
             for ( int j = 1; j <= 5; j++ )
-            renderText( to_string(j) + ". 0", TILE_WIDTH * 40, TILE_WIDTH * (22 + j), false, LEFT, TOP );
+            renderText( to_string(j) + ". 0", LENGTH_UNIT * 40, LENGTH_UNIT * (22 + j), false, LEFT, TOP );
         }
         SDL_SetRenderDrawColor( renderer, 0, 0, 0, 255 );
         SDL_RenderFillRect( renderer, &soloMenuButtonBox[i] );
-        renderText( soloGameModeName[i], soloMenuButtonBox[i].x + TILE_WIDTH, soloMenuButtonBox[i].y + soloMenuButtonBox[i].h / 2,
+        renderText( soloGameModeName[i], soloMenuButtonBox[i].x + LENGTH_UNIT, soloMenuButtonBox[i].y + soloMenuButtonBox[i].h / 2,
                     false, LEFT, MIDDLE, 2, SDL_Color{255,255,255} );
         if ( activeButton == i )    SDL_SetRenderDrawColor( renderer, 255, 255, 255, 100 );
         else                        SDL_SetRenderDrawColor( renderer, 0, 0, 0, 100 );
@@ -391,9 +391,9 @@ void renderTransition( bool &transIn )
     }
 }
 
-// const int LEFT_ADJUSTMENTBUTTON_X =  -TILE_WIDTH * 6;
-// const int RIGHT_ADJUSTMENTBUTTON_X = TILE_WIDTH * 5;
-// ADJUSTMENT_BUTTON_WIDTH = TILE_WIDTH;
+// const int LEFT_ADJUSTMENTBUTTON_X =  -LENGTH_UNIT * 6;
+// const int RIGHT_ADJUSTMENTBUTTON_X = LENGTH_UNIT * 5;
+// ADJUSTMENT_BUTTON_WIDTH = LENGTH_UNIT;
 void renderAdjustmentButton( int x, int y, bool disableLeft, bool disableRight )
 {
     Texture adjButton;
@@ -403,21 +403,21 @@ void renderAdjustmentButton( int x, int y, bool disableLeft, bool disableRight )
     if (disableLeft)
     {
         adjButton.setColorMod(50, 50, 50);
-        adjButton.render( x + LEFT_ADJUSTMENTBUTTON_X, y, TILE_WIDTH, TILE_WIDTH, &left );
+        adjButton.render( x + LEFT_ADJUSTMENTBUTTON_X, y, LENGTH_UNIT, LENGTH_UNIT, &left );
         adjButton.setColorMod(255, 255, 255);
-        adjButton.render( x + RIGHT_ADJUSTMENTBUTTON_X, y, TILE_WIDTH, TILE_WIDTH, &right );
+        adjButton.render( x + RIGHT_ADJUSTMENTBUTTON_X, y, LENGTH_UNIT, LENGTH_UNIT, &right );
     }
     else if (disableRight)
     {
         adjButton.setColorMod(50, 50, 50);
-        adjButton.render( x + RIGHT_ADJUSTMENTBUTTON_X, y, TILE_WIDTH, TILE_WIDTH, &right );
+        adjButton.render( x + RIGHT_ADJUSTMENTBUTTON_X, y, LENGTH_UNIT, LENGTH_UNIT, &right );
         adjButton.setColorMod(255, 255, 255);
-        adjButton.render( x + LEFT_ADJUSTMENTBUTTON_X, y, TILE_WIDTH, TILE_WIDTH, &left );
+        adjButton.render( x + LEFT_ADJUSTMENTBUTTON_X, y, LENGTH_UNIT, LENGTH_UNIT, &left );
     }
     else
     {
-        adjButton.render( x + LEFT_ADJUSTMENTBUTTON_X, y, TILE_WIDTH, TILE_WIDTH, &left );
-        adjButton.render( x + RIGHT_ADJUSTMENTBUTTON_X, y, TILE_WIDTH, TILE_WIDTH, &right );
+        adjButton.render( x + LEFT_ADJUSTMENTBUTTON_X, y, LENGTH_UNIT, LENGTH_UNIT, &left );
+        adjButton.render( x + RIGHT_ADJUSTMENTBUTTON_X, y, LENGTH_UNIT, LENGTH_UNIT, &right );
     }
     
 }
@@ -460,50 +460,29 @@ void loadRandomBackground()
     }
 }
 
-void renderResultScreen( const Player &player, Uint32 startMark, string time, bool fadeOut )
+void renderResultScreen( const Player &player, Uint32 startMark, string time )
 {
     const float DURATION = 750;
-    if ( !fadeOut )
+    renderText("RESULT", player.getX() + BOARD_WIDTH / 2, player.getY() + LENGTH_UNIT * 4, false, CENTER, MIDDLE, 2);
+    if (SDL_GetTicks() - startMark > DURATION)
     {
-        textTexture.setAlphaMod( min((SDL_GetTicks() - startMark) / DURATION, 1.f) * 255);
-        renderText("RESULT", player.getX() + BOARD_WIDTH / 2, player.getY() + TILE_WIDTH * 4, false, CENTER, MIDDLE, 2);
-        if (SDL_GetTicks() - startMark > DURATION)
-        {
-            textTexture.setAlphaMod( min((SDL_GetTicks() - startMark - DURATION) / DURATION, 1.f) * 255);
-            renderText("Line", player.getX() + TILE_WIDTH, player.getY() + TILE_WIDTH * 8, false, LEFT, MIDDLE);
-            renderText(to_string(player.getLine()), player.getX() + BOARD_WIDTH - TILE_WIDTH, player.getY() + TILE_WIDTH * 8, false, RIGHT, MIDDLE);
-        }
-        if (SDL_GetTicks() - startMark > DURATION * 2)
-        {
-            textTexture.setAlphaMod( min((SDL_GetTicks() - startMark - DURATION * 2) / DURATION, 1.f) * 255);
-            renderText("Speed LV", player.getX() + TILE_WIDTH, player.getY() + TILE_WIDTH * 10, false, LEFT, MIDDLE);
-            renderText(to_string(player.getLevel()), player.getX() + BOARD_WIDTH - TILE_WIDTH, player.getY() + TILE_WIDTH * 10, false, RIGHT, MIDDLE);
-        }
-        if (SDL_GetTicks() - startMark > DURATION * 3)
-        {
-            textTexture.setAlphaMod( min((SDL_GetTicks() - startMark - DURATION * 3) / DURATION, 1.f) * 255);
-            renderText("Time", player.getX() + TILE_WIDTH, player.getY() + TILE_WIDTH * 12, false, LEFT, MIDDLE);
-            renderText(time, player.getX() + BOARD_WIDTH - TILE_WIDTH, player.getY() + TILE_WIDTH * 12, false, RIGHT, MIDDLE);
-        }
-        if (SDL_GetTicks() - startMark > DURATION * 4)
-        {
-            textTexture.setAlphaMod( min((SDL_GetTicks() - startMark - DURATION * 4) / DURATION, 1.f) * 255);
-            renderText("Score", player.getX() + TILE_WIDTH, player.getY() + TILE_WIDTH * 14, false, LEFT, MIDDLE);
-            renderText(to_string(player.getScore()), player.getX() + BOARD_WIDTH - TILE_WIDTH, player.getY() + TILE_WIDTH * 14, false, RIGHT, MIDDLE);
-        }
+        renderText("Line", player.getX() + LENGTH_UNIT, player.getY() + LENGTH_UNIT * 8, false, LEFT, MIDDLE);
+        renderText(to_string(player.getLine()), player.getX() + BOARD_WIDTH - LENGTH_UNIT, player.getY() + LENGTH_UNIT * 8, false, RIGHT, MIDDLE);
     }
-    else
+    if (SDL_GetTicks() - startMark > DURATION * 2)
     {
-            textTexture.setAlphaMod( max(1 - (SDL_GetTicks() - startMark) / DURATION, 0.f) * 255);
-            renderText("RESULT", player.getX() + BOARD_WIDTH / 2, player.getY() + TILE_WIDTH * 4, false, CENTER, MIDDLE, 2);
-            renderText("Line", player.getX() + TILE_WIDTH, player.getY() + TILE_WIDTH * 8, false, LEFT, MIDDLE);
-            renderText(to_string(player.getLine()), player.getX() + BOARD_WIDTH - TILE_WIDTH, player.getY() + TILE_WIDTH * 8, false, RIGHT, MIDDLE);
-            renderText("Speed LV", player.getX() + TILE_WIDTH, player.getY() + TILE_WIDTH * 10, false, LEFT, MIDDLE);
-            renderText(to_string(player.getLevel()), player.getX() + BOARD_WIDTH - TILE_WIDTH, player.getY() + TILE_WIDTH * 10, false, RIGHT, MIDDLE);
-            renderText("Time", player.getX() + TILE_WIDTH, player.getY() + TILE_WIDTH * 12, false, LEFT, MIDDLE);
-            renderText(time, player.getX() + BOARD_WIDTH - TILE_WIDTH, player.getY() + TILE_WIDTH * 12, false, RIGHT, MIDDLE);
-            renderText("Score", player.getX() + TILE_WIDTH, player.getY() + TILE_WIDTH * 14, false, LEFT, MIDDLE);
-            renderText(to_string(player.getScore()), player.getX() + BOARD_WIDTH - TILE_WIDTH, player.getY() + TILE_WIDTH * 14, false, RIGHT, MIDDLE);
+        renderText("Speed LV", player.getX() + LENGTH_UNIT, player.getY() + LENGTH_UNIT * 10, false, LEFT, MIDDLE);
+        renderText(to_string(player.getLevel()), player.getX() + BOARD_WIDTH - LENGTH_UNIT, player.getY() + LENGTH_UNIT * 10, false, RIGHT, MIDDLE);
+    }
+    if (SDL_GetTicks() - startMark > DURATION * 3)
+    {
+        renderText("Time", player.getX() + LENGTH_UNIT, player.getY() + LENGTH_UNIT * 12, false, LEFT, MIDDLE);
+        renderText(time, player.getX() + BOARD_WIDTH - LENGTH_UNIT, player.getY() + LENGTH_UNIT * 12, false, RIGHT, MIDDLE);
+    }
+    if (SDL_GetTicks() - startMark > DURATION * 4)
+    {
+        renderText("Score", player.getX() + LENGTH_UNIT, player.getY() + LENGTH_UNIT * 14, false, LEFT, MIDDLE);
+        renderText(to_string(player.getScore()), player.getX() + BOARD_WIDTH - LENGTH_UNIT, player.getY() + LENGTH_UNIT * 14, false, RIGHT, MIDDLE);
     }
 }
 
@@ -512,15 +491,15 @@ int renderRetryScreen( bool &retryLoop, int &scene )
     enum RetryMenuButton { RETRY, QUIT };
     SDL_Rect buttons[2];
     string content[] = { "RETRY", "BACK TO MENU" };
-    buttons[RETRY] = SDL_Rect { TILE_WIDTH * 28, TILE_WIDTH * 16, TILE_WIDTH * 8, TILE_WIDTH * 2};
-    buttons[QUIT] = SDL_Rect { TILE_WIDTH * 28, TILE_WIDTH * 19, TILE_WIDTH * 8, TILE_WIDTH * 2 };
+    buttons[RETRY] = SDL_Rect { LENGTH_UNIT * 28, LENGTH_UNIT * 16, LENGTH_UNIT * 8, LENGTH_UNIT * 2};
+    buttons[QUIT] = SDL_Rect { LENGTH_UNIT * 28, LENGTH_UNIT * 19, LENGTH_UNIT * 8, LENGTH_UNIT * 2 };
     int mouse_x, mouse_y;
     int activeButton = -1;
     SDL_GetMouseState( &mouse_x, &mouse_y );
-    if ( mouse_x >= TILE_WIDTH * 28 && mouse_x <= TILE_WIDTH * 36)
+    if ( mouse_x >= LENGTH_UNIT * 28 && mouse_x <= LENGTH_UNIT * 36)
     {
-        if ( mouse_y <= TILE_WIDTH * 18 && mouse_y >= TILE_WIDTH * 16) activeButton = RETRY;
-        else if ( mouse_y >= TILE_WIDTH * 19 && mouse_y <= TILE_WIDTH * 21) activeButton = QUIT;
+        if ( mouse_y <= LENGTH_UNIT * 18 && mouse_y >= LENGTH_UNIT * 16) activeButton = RETRY;
+        else if ( mouse_y >= LENGTH_UNIT * 19 && mouse_y <= LENGTH_UNIT * 21) activeButton = QUIT;
     }
     for (int i = 0; i < 2; i++)
     {
@@ -548,32 +527,32 @@ void Player::displayBonus()
     if ( combo > 0 )
     {
         // textTexture.setAlphaMod( time - bonusMark[0] < DURATION - FADE ? 255 : 255 - (time - bonusMark[0] - DURATION + FADE) * 255 / FADE );
-        renderText( to_string( combo ) + "x", x - TILE_WIDTH * 6, y + TILE_WIDTH * 6, false, RIGHT, BOTTOM, max(2 - (time - bonusMark[0]) / 500.f * 0.5f, 1.5f));
-        renderText( "COMBO", x - TILE_WIDTH, y + TILE_WIDTH * 6, false, RIGHT, BOTTOM, 1 );
+        renderText( to_string( combo ) + "x", x - LENGTH_UNIT * 6, y + LENGTH_UNIT * 6, false, RIGHT, BOTTOM, max(2 - (time - bonusMark[0]) / 500.f * 0.5f, 1.5f));
+        renderText( "COMBO", x - LENGTH_UNIT, y + LENGTH_UNIT * 6, false, RIGHT, BOTTOM, 1 );
     }
     if ( bonus & T_SPIN )
     {
         // textTexture.setAlphaMod( time - bonusMark[1] < 1500 ? 255 : 255 - (time - bonusMark[1] - DURATION + FADE) * 255 / FADE );
-        renderText( "T-SPIN", x - TILE_WIDTH, y + TILE_WIDTH * 9, false, RIGHT, BOTTOM, 2, {245, 66, 239} );
-        if ( bonus & MINI ) renderText( "Mini", x - TILE_WIDTH * 8, y + TILE_WIDTH * 9, false, RIGHT, BOTTOM, 2, {245, 66, 239} );
+        renderText( "T-SPIN", x - LENGTH_UNIT, y + LENGTH_UNIT * 9, false, RIGHT, BOTTOM, 2, {245, 66, 239} );
+        if ( bonus & MINI ) renderText( "Mini", x - LENGTH_UNIT * 8, y + LENGTH_UNIT * 9, false, RIGHT, BOTTOM, 2, {245, 66, 239} );
         if ( time - bonusMark[1] > DURATION ) { bonus -= T_SPIN; if ( bonus & MINI ) bonus -= MINI; }
     }
     if ( bonus & TETRIS )
     {
         // textTexture.setAlphaMod( time - bonusMark[1] < 1500 ? 255 : 255 - (time - bonusMark[1] - DURATION + FADE) * 255 / FADE );
-        renderText( "TETRIS", x - TILE_WIDTH, y + TILE_WIDTH * 9, false, RIGHT, BOTTOM, 2, {66, 218, 245} );
+        renderText( "TETRIS", x - LENGTH_UNIT, y + LENGTH_UNIT * 9, false, RIGHT, BOTTOM, 2, {66, 218, 245} );
         if ( time - bonusMark[1] > DURATION ) bonus -= TETRIS;
     }
     if ( (bonus & B2B == B2B) && b2b > 0 )
     {
         // textTexture.setAlphaMod( time - bonusMark[1] < 1500 ? 255 : 255 - (time - bonusMark[1] - DURATION + FADE) * 255 / FADE );
-        renderText( "BACK-TO-BACK", x - TILE_WIDTH, y + TILE_WIDTH * 11, false, RIGHT, BOTTOM, 1 );
+        renderText( "BACK-TO-BACK", x - LENGTH_UNIT, y + LENGTH_UNIT * 11, false, RIGHT, BOTTOM, 1 );
         if ( time - bonusMark[1] > DURATION ) bonus -= B2B;
     }
     if ( bonus & ALLCLEAR )
     {
         // textTexture.setAlphaMod( time - bonusMark[2] < 1500 ? 255 : 255 - (time - bonusMark[2] - DURATION + FADE) * 255 / FADE );
-        renderText( "ALL CLEAR", x - TILE_WIDTH, y + TILE_WIDTH * 13, false, RIGHT, BOTTOM );
+        renderText( "ALL CLEAR", x - LENGTH_UNIT, y + LENGTH_UNIT * 13, false, RIGHT, BOTTOM );
         if ( time - bonusMark[2] > DURATION ) bonus -= ALLCLEAR;
     }
     // textTexture.setAlphaMod( 255 );

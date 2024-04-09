@@ -19,18 +19,31 @@ class Player
         bool holdLock;
         int score, line, level;
         int mode;
+
+
+        //Marks the time a piece locked in for delaying spawning a new piece
+        Uint32 delaySpawnMark;
+        
+        //Charges the rotation command during the delay spawning new piece. Hold rotate button (Up, x, z)
+        //to charge. If the button is held until new piece is created, it will be spawned in other direction like being rotated before.
+        int irsCharge;
+
         //Marks the last time soft dropping current tetromino
         Uint32 pullMark;
+
+        //Stores the interval between each gravity's pull        
         float pullInterval;
+
         pair<int, int> keyRepeatState[3];
         /**
          * Marks the triggering point of autolock timer.
          * Timer resets when doing a move other than dropping it lower than the lowest reached row
-         * Timer is cancelled when falling below the lowest reached point
+         * Timer is cancelled when falling below the lowest reached point.
          */
         Uint32 lockMark;
 
         int lockDelay;
+
         //Counts the number of moves made after triggering autolock timer. After reaching 15, the timer expires immediately.
         //Counter resets when the timer is cancelled or a new piece is drawn (from the queue or hold box).
         int movesBeforeLock, lowestRow;
@@ -52,6 +65,13 @@ class Player
         //Stores last move (Rotate, move left/right, or non-locking drop)
         int lastMove;
 
+        //Stores current event in Mystery mode (-1 for no event)
+        int mysteryEvent;
+
+        //Marks event start time
+        Uint32 eventMark;
+
+        //Stores player's status
         bool gameOver;
     public:
         Player( int _level, int _mode, int _x, int _y );
@@ -69,6 +89,8 @@ class Player
         void setLevel( int _level );
 
         int getMode() const;
+        
+        int getMysteryEvent() const;
 
         void setLockDelay();
 
@@ -154,6 +176,8 @@ class Player
 
         void swapHoldPiece();
 
+        void handleMysteryEvents( vector<Tetromino> &Tqueue );
+
         //===================================GRAPHICS================================
         void displayBoard();
 
@@ -168,7 +192,6 @@ class Player
         // Draw pieces on the board;
         void displayBoardCell();
 
-
         void displayBonus();
 
         void renderGameOver();
@@ -181,6 +204,7 @@ class Player
 enum bonusType { MINI = 1, T_SPIN = 2, B2B = 4, ALLCLEAR = 8, TETRIS = 16 };
 enum soloMode { CLASSIC, SPRINT, BLITZ, MASTER, MYSTERY };
 enum multiMode { SCORE = MYSTERY + 1, ATTACK, MYSTERY_ATTACK };
+enum mysteryType { UPSIDE_DOWN, UNSTABLE, BOMB, GIANT, ADD_GARBAGE, CORRUPTED, HORIZONTAL_SHIFT, EVENT_NUMBER };
 enum modType { LEVEL, LINECAP, TIME, ACTIVATE_MYSTERY };
 
 

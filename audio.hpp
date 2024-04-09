@@ -13,4 +13,5 @@ enum SoundEffect {BONUS_POINT, COUNTDOWN, GAMEOVER, HARDDROP, LINE_CLEAR, LOCK, 
 void loadSfx();
 void playSfx(int fx);
 void stopMusic( bool fade );
+void resumeMusic();
 #endif

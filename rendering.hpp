@@ -6,6 +6,7 @@
 
 enum HorizontalAlignment { LEFT, CENTER, RIGHT };
 enum VerticalAlignment { TOP, MIDDLE, BOTTOM };
+const int LENGTH_UNIT = 30;
 /**
  * Renders text
  * \param text Text to be rendered
@@ -31,11 +32,11 @@ bool displayCountdown( int x, int y, int w, int h, Uint32 startMark );
 //Main menu buttons
 const int MAIN_MENU_BUTTONS = 4;
 extern SDL_Rect buttonBox[MAIN_MENU_BUTTONS];
-const int MAIN_MENU_BUTTON_X = TILE_WIDTH * 8;
-const int MAIN_MENU_FIRST_BUTTON_Y = TILE_WIDTH * 18;
-const int MAIN_MENU_BUTTON_HEIGHT = TILE_WIDTH * 3;
-const int MAIN_MENU_BUTTON_WIDTH = TILE_WIDTH * 16;
-const int MAIN_MENU_BUTTON_PADDING = TILE_WIDTH;
+const int MAIN_MENU_BUTTON_X = LENGTH_UNIT * 8;
+const int MAIN_MENU_FIRST_BUTTON_Y = LENGTH_UNIT * 18;
+const int MAIN_MENU_BUTTON_HEIGHT = LENGTH_UNIT * 3;
+const int MAIN_MENU_BUTTON_WIDTH = LENGTH_UNIT * 16;
+const int MAIN_MENU_BUTTON_PADDING = LENGTH_UNIT;
 
 //Renders main menu screen
 void renderMenuBackground( bool stop = false );
@@ -61,23 +62,23 @@ void renderTransition( bool &transIn );
 //---------------------------SOLO MENU---------------------------
 const int SOLO_MENU_BUTTONS = 5;
 extern SDL_Rect soloMenuButtonBox[SOLO_MENU_BUTTONS];
-const int SOLO_MENU_BUTTON_X = TILE_WIDTH * 8;
-const int SOLO_MENU_FIRST_BUTTON_Y = TILE_WIDTH * 10;
-const int SOLO_MENU_BUTTON_HEIGHT = TILE_WIDTH * 4;
-const int SOLO_MENU_BUTTON_WIDTH = TILE_WIDTH * 20;
-const int SOLO_BUTTON_PADDING = TILE_WIDTH / 5;
+const int SOLO_MENU_BUTTON_X = LENGTH_UNIT * 8;
+const int SOLO_MENU_FIRST_BUTTON_Y = LENGTH_UNIT * 10;
+const int SOLO_MENU_BUTTON_HEIGHT = LENGTH_UNIT * 4;
+const int SOLO_MENU_BUTTON_WIDTH = LENGTH_UNIT * 20;
+const int SOLO_BUTTON_PADDING = LENGTH_UNIT / 5;
 extern const string soloGameModeName[];
 void renderSoloMenu( int mouse_x, int mouse_y, int &activeButton );
 
-const int LEFT_ADJUSTMENTBUTTON_X = -TILE_WIDTH * 6;;
-const int RIGHT_ADJUSTMENTBUTTON_X = TILE_WIDTH * 5;
+const int LEFT_ADJUSTMENTBUTTON_X = -LENGTH_UNIT * 6;;
+const int RIGHT_ADJUSTMENTBUTTON_X = LENGTH_UNIT * 5;
 void renderAdjustmentButton( int x, int y, bool disableLeft, bool disableRight );
 
 void loadRandomBackground();
 
 void loadMenuElements();
 
-void renderResultScreen( const Player &player, Uint32 startMark, string time, bool fadeOut = false );
+void renderResultScreen( const Player &player, Uint32 startMark, string time );
 
 int renderRetryScreen( bool &retryLoop, int &scene );
 

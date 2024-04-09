@@ -1,11 +1,12 @@
 #include "Texture.hpp"
 #include <SDL_image.h>
+#include <iostream>
 using namespace std;
 //Stores the tile sprite sheet
 Texture tileSpriteSheet;
 
 //Sprite sheet clipping rectangles
-SDL_Rect tileSpriteClips[8];
+SDL_Rect tileSpriteClips[12];
 
 //Stores font
 TTF_Font *fontBold;
@@ -83,7 +84,6 @@ bool Texture::loadText( string text, TTF_Font *font, SDL_Color color )
 bool Texture::loadFromFile( string path )
 {
     free();
-
     SDL_Texture *newTexture = NULL;
 
     SDL_Surface* loadedSurface = IMG_Load( path.c_str() );

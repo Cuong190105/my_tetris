@@ -26,6 +26,7 @@ Player::Player( int _level, int _mode, int _x, int _y )
     gameOver = false;
     setLevel(_level);
     bonus = 0;
+    delaySpawnMark = SDL_GetTicks();
 }
 
 Player::~Player() {}
@@ -63,6 +64,7 @@ int Player::getMode() const { return mode; }
 void Player::terminateGame() { gameOver = true; }
 bool Player::isGameOver() { return gameOver; }
 
+int Player::getMysteryEvent() const { return mysteryEvent; }
 
 void Player::setX( int _x ) { x = _x; }
 int Player::getX() const{ return x; }
@@ -87,6 +89,8 @@ void Player::pullNewTetromino( const vector<Tetromino> &Tqueue )
     pullMark = SDL_GetTicks();
     movesBeforeLock = 0;
     lowestRow = tetr.getRow();
+    if ( irsCharge == 1) rotatePiece( true );
+    else if ( irsCharge == -1) rotatePiece( false );
 }
 
 bool Player::checkCollision( const Tetromino &tetr, int rowAdjustment, int colAdjustment ) const
@@ -114,7 +118,7 @@ void Player::lockTetromino()
             {
                 pb.modifyCell( tetr.getRow() + row, tetr.getCol() + col, tetr.getCellState(row, col) );
             }
-    vector<int> lineCleared = pb.completedRow( tetr.getRow() + tetr.getContainerSize() - 1, tetr.getRow() );
+    int lineCleared = pb.completedRow( tetr.getRow() + tetr.getContainerSize() - 1, tetr.getRow() );
     bool allClear = true;
     for ( int row = 0; row < HEIGHT_BY_TILE; row++ )
     {
@@ -123,9 +127,10 @@ void Player::lockTetromino()
         if ( !allClear ) break;
     }
     if ( allClear ) bonus |= ALLCLEAR;
-    updateScore( lineCleared.size() );
-    pb.updateBoard( lineCleared );
+    updateScore( lineCleared );
     tetr.voidPiece();
+    delaySpawnMark = SDL_GetTicks();
+    lockMark = SDL_GetTicks();
 }
 
 void Player::movePieceHorizontally( bool right )
@@ -286,8 +291,8 @@ void Player::rotatePiece( bool rotateClockwise )
 
     for ( int i = 0; i < ADJUSTMENTS_COUNT; i++ )
     {
-        int colAdjustments = wallKickAdjustments[i][0] * coeff;
-        int rowAdjustments = wallKickAdjustments[i][1] * coeff;
+        int colAdjustments = wallKickAdjustments[i][0] * coeff * ( 1 + ( tetr.getContainerSize() > 4 ));
+        int rowAdjustments = wallKickAdjustments[i][1] * coeff * ( 1 + ( tetr.getContainerSize() > 4 ));
         if ( !checkCollision( tmp, rowAdjustments, colAdjustments ) )
         {
             tetr.updateRotationState( tetr.getRotationState() + ( rotateClockwise ? 1 : -1 ) );
@@ -451,6 +456,120 @@ void Player::updateScore( int lineCleared, int delta )
     line += lineCleared;
 }
 
+void Player::handleMysteryEvents( vector<Tetromino> &Tqueue )
+{
+    static int tmp = 0;
+    static bool generatedTmp = false;
+    Uint32 start;
+    if ( mysteryEvent == -1 ) mysteryEvent = rand() % EVENT_NUMBER;
+    switch( mysteryEvent )
+    {
+        // case UPSIDE_DOWN: Use a temporary texture to render the whole playfield on it then rotate it.
+        case UNSTABLE:
+            if (!generatedTmp)
+            {
+                tmp = rand() % 5 + 1;
+                for ( int i = 0; i < tmp; i++ )
+                {
+                    for ( int row = 0; row < Tqueue[i].getContainerSize(); row++ )
+                    for ( int col = 0; col < Tqueue[i].getContainerSize(); col++ )
+                    if (Tqueue[i].getCellState(row, col) != 0) Tqueue[i].modifyCell( row, col, UNSTABLE_PIECE );
+                }
+            }
+            else
+            {
+                int unstableRemaining = 0;
+                bool stable = true;
+                for ( int i = 0; i < tmp; i++ )
+                {
+                    for ( int row = 0; row < Tqueue[i].getContainerSize(); row++ )
+                    for ( int col = 0; col < Tqueue[i].getContainerSize(); col++ )
+                    {
+                        if ( Tqueue[i].getCellState(row, col) == UNSTABLE_PIECE ) {stable = false; break;}
+                    }
+                    if ( !stable ) unstableRemaining++;
+                }
+                tmp = unstableRemaining;
+                if (tmp == 0) {mysteryEvent = -1; generatedTmp = false;}
+            }
+            break;
+        case BOMB:
+            if (!generatedTmp) 
+            {
+                Tqueue.insert(Tqueue.begin(), Tetromino( BOMB_PIECE ));
+                generatedTmp = true;
+            }
+            mysteryEvent = -1;
+            break;
+        case GIANT:
+            tetr.makeItGiant();
+            mysteryEvent = -1;
+            break;
+        case ADD_GARBAGE:
+            tmp = rand() % 10 + 1;
+            start = SDL_GetTicks();
+            for ( int i = 0; i < tmp; i++ )
+            {
+                if ( SDL_GetTicks() - start < 1000 * i / 6 )
+                {
+                    SDL_Delay(1000 * i / 6 - (SDL_GetTicks() - start));
+                }
+                int hole = rand() % WIDTH_BY_TILE;
+                pb.addRow( 0 );
+                for ( int j = 0; j < WIDTH_BY_TILE; j++ )
+                {
+                    if ( j == hole ) continue;
+                    pb.modifyCell( 0, j, GARBAGE_PIECE );
+                }
+                displayBoard();
+                SDL_RenderPresent( renderer );
+            }
+            mysteryEvent = -1;
+            break;
+        case CORRUPTED:
+            if ( !generatedTmp ) tmp = rand() % 16 + 10;
+            for (int i = 0; i < Tqueue.size() && tmp > 0; i++)
+            {
+                int intactCell = 0;
+                for (int i = 0; i < Tqueue[i].getContainerSize(); i++)
+                {
+                    for (int j = 0; j < Tqueue[i].getContainerSize(); j++)
+                    {
+                        if (Tqueue[i].getCellState( i, j ) > 0) intactCell++;
+                    }
+                }
+                if (intactCell == 4) {Tqueue[i].corruptPiece(); tmp--;}
+            }
+            if (tmp == 0) {mysteryEvent = -1; generatedTmp = false;}
+            break;
+        case HORIZONTAL_SHIFT:
+            tmp = rand() % 8 + 5;
+            start = SDL_GetTicks();
+            for (int i = 0; i < tmp; i++)
+            {
+                if ( SDL_GetTicks() - start < 1000 * i / 6 )
+                {
+                    SDL_Delay( 1000 * i / 6 - (SDL_GetTicks() - start) );
+                }
+                for (int j = 0; j < HEIGHT_BY_TILE; j++)
+                {
+                    int popped = pb.getCellState( j, 0 );
+                    for (int k = 0; k < WIDTH_BY_TILE - 1; k++)
+                    {
+                        pb.modifyCell( j, k, pb.getCellState( j, k + 1 ) );
+                    }
+                    pb.modifyCell( j, WIDTH_BY_TILE - 1, popped );
+                }
+                displayBoard();
+                SDL_RenderPresent( renderer );
+            }
+            mysteryEvent = -1;
+            break;
+        default:
+            break;
+    }
+}
+
 void Player::swapHoldPiece()
 {
     if ( !holdLock )
@@ -504,9 +623,11 @@ void Player::displayBoard()
 
 void Player::displayBoardCell()
 {
-    const  float DURATION = 3000;
+    const float DURATION = 3000;
+    const int FLASH_IO_DURATION = lockDelay / 2; 
     float scale = 1;
     int adjust = 0;
+    bool needClearing = false;
     if ( gameOver )
     {
         scale = 1 + (SDL_GetTicks() - pullMark) * 2 / DURATION;
@@ -520,8 +641,18 @@ void Player::displayBoardCell()
             int cellState = pb.getCellState( row, col );
             if ( cellState > 0)
             {
+                if ( cellState == CLEAR ) {tileSpriteSheet.setAlphaMod( 255 * max((FLASH_IO_DURATION - abs((int)(SDL_GetTicks() - lockMark - FLASH_IO_DURATION))), 0) / FLASH_IO_DURATION ); needClearing = true;}
                 tileSpriteSheet.render( x + TILE_WIDTH * col + adjust, y + BOARD_HEIGHT - TILE_WIDTH * ( row + 1 ) + adjust, TILE_WIDTH * scale, TILE_WIDTH * scale, &tileSpriteClips[ cellState ] );
+                if ( cellState == CLEAR ) tileSpriteSheet.setAlphaMod( 255 ); 
             }
+        }
+    }
+    if ( needClearing )
+    {
+        if ( SDL_GetTicks() - lockMark < FLASH_IO_DURATION * 2 ) delaySpawnMark = SDL_GetTicks();
+        else
+        {
+            pb.deleteClearedCell();
         }
     }
     if ( gameOver ) tileSpriteSheet.setAlphaMod( 255 );
@@ -612,15 +743,19 @@ void Player::displayHeldTetromino()
 void Player::ingameProgress( const vector<Tetromino> &Tqueue, int &queuePosition, int &scene )
 {
     //Initialize game & piece bag;
+    const int SPAWN_DELAY = 16;
     if ( !gameOver )
     {   
         if ( tetr.getType() == 0 )
         {
-            pullNewTetromino( Tqueue );
-            queuePosition++;
+            if ( SDL_GetTicks() - delaySpawnMark > SPAWN_DELAY )
+            {
+                pullNewTetromino( Tqueue );
+                queuePosition++;
+                if ( checkCollision( tetr ) ) gameOver = true;
+            }
         }
-        if ( checkCollision( tetr ) ) gameOver = true;
-        gravityPull();
+        if ( tetr.getType() != 0 ) gravityPull();
 
         if ( !gameOver ) handlingKeyPress( gameOver, scene );
 
@@ -647,7 +782,7 @@ void Player::handlingKeyPress( bool &gameOver, int &scene )
             break;
         }
         //Handles non-repeat keys
-        if ( event.type == SDL_KEYDOWN && event.key.repeat == 0 )
+        if ( tetr.getType() != 0 && event.type == SDL_KEYDOWN && event.key.repeat == 0 )
         {
             switch( event.key.keysym.sym )
             {
@@ -682,7 +817,7 @@ void Player::handlingKeyPress( bool &gameOver, int &scene )
     {
         if ( keyRepeatState[K_LEFT].first == 0 )
         {
-            movePieceHorizontally( false );
+            if (tetr.getType() != 0) movePieceHorizontally( false );
             keyRepeatState[K_LEFT].first = 1;
             keyRepeatState[K_LEFT].second = SDL_GetTicks();
         }
@@ -692,7 +827,7 @@ void Player::handlingKeyPress( bool &gameOver, int &scene )
             if ( keyRepeatState[K_RIGHT].first == 1 ) keyRepeatState[K_LEFT].first = 3;
             else
             {
-                movePieceHorizontally( false );
+                if (tetr.getType() != 0) movePieceHorizontally( false );
                 keyRepeatState[K_LEFT].second = SDL_GetTicks();
             }
         }
@@ -703,7 +838,7 @@ void Player::handlingKeyPress( bool &gameOver, int &scene )
     {
         if ( keyRepeatState[K_RIGHT].first == 0 )
         {
-            movePieceHorizontally( true );
+            if (tetr.getType() != 0) movePieceHorizontally( true );
             keyRepeatState[K_RIGHT].first = 1;
             keyRepeatState[K_RIGHT].second = SDL_GetTicks();
         }
@@ -713,7 +848,7 @@ void Player::handlingKeyPress( bool &gameOver, int &scene )
             if ( keyRepeatState[K_LEFT].first == 1 ) keyRepeatState[K_RIGHT].first = 3;
             else
             {
-                movePieceHorizontally( true );
+                if (tetr.getType() != 0) movePieceHorizontally( true );
                 keyRepeatState[K_RIGHT].second = SDL_GetTicks();
             }
         }
@@ -725,9 +860,17 @@ void Player::handlingKeyPress( bool &gameOver, int &scene )
     {
         if ( keyRepeatState[K_DOWN].first == 0 || (keyRepeatState[K_DOWN].first == 2 && SDL_GetTicks() - keyRepeatState[K_DOWN].second > ARR))
         {
-            dropPiece( false );
+            if (tetr.getType() != 0) dropPiece( false );
             keyRepeatState[K_DOWN].second = SDL_GetTicks();
             if ( keyRepeatState[K_DOWN].first == 0 ) keyRepeatState[K_DOWN].first = 2;
         }
     } else keyRepeatState[K_DOWN].first = 0;
+    if ( keystate[SDL_SCANCODE_X] || keystate[SDL_SCANCODE_UP] && tetr.getType() == 0 )
+    {
+        irsCharge = 1;
+    }
+    else if ( keystate[SDL_SCANCODE_Z] && tetr.getType() == 0 )
+    {
+        irsCharge = -1;
+    } else irsCharge = 0;
 }
