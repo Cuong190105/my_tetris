@@ -80,7 +80,8 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
             Player player ( mod[LEVEL], gameMode, ( WINDOW_WIDTH - BOARD_WIDTH ) / 2, ( WINDOW_HEIGHT - BOARD_HEIGHT ) / 2 ) ;
             int isDrawn = true;
             if ( gameMode == MASTER ) mod[LINECAP] = 300;
-            else if ( gameMode == CLASSIC || gameMode == BLITZ ) mod[LINECAP] = -1;
+            else if ( gameMode == CLASSIC ) mod[LINECAP] = -1;
+            else if ( gameMode == BLITZ ) mod[LINECAP] = 3;
             while ( !player.isGameOver() )
             {
                 clearScreen();
@@ -122,17 +123,19 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                     player.displayCurrentTetromino();
                     player.displayHeldTetromino();
                     player.displayBonus();
-                    SDL_SetRenderTarget( renderer, NULL );
-                    if ( gameMode == MYSTERY && player.getMysteryEvent() == UPSIDE_DOWN ) SDL_RenderCopyEx( renderer, foreground, NULL, NULL, 180, NULL, SDL_FLIP_NONE );
-                    else SDL_RenderCopy( renderer, foreground, NULL, NULL );
                     switch( gameMode )
                     {
                         case SPRINT:
-                            if ( player.getLine() >= mod[LINECAP] ) {player.terminateGame(); win = true;}
-                            // if ( player.getLine() >= 1 ) {player.terminateGame(); win = true;}
+                            // if ( player.getLine() >= mod[LINECAP] ) {player.terminateGame(); win = true;}
+                            if ( player.getLine() >= 1 ) {player.terminateGame(); win = true;}
                             break;
                         case BLITZ:
                             if ( SDL_GetTicks() - startMark >= mod[TIME] * 60000 ) {player.terminateGame();win = true;}
+                            if ( player.getLine() >= mod[LINECAP] )
+                            {
+                                player.setLevel(player.getLevel() + 1);
+                                mod[LINECAP] += player.getLevel() * 2 + 1;
+                            }
                             break;
                         case MASTER:
                             if ( player.getLine() >= 300 ) {player.terminateGame();win = true;}
@@ -146,9 +149,22 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                             break;
                         }
                         case MYSTERY:
-                            
+                            if ( player.getLine() / 10 + 1 > player.getLevel() ) player.setLevel( player.getLevel() + 1 );
+                            const string eventName[] = {"UPSIDE DOWN", "UNSTABLE", "BOMB", "GIANT", "GARBAGE", "CORRUPTED", "HORIZONTAL SHIFT"};
+                            if (player.getMysteryEvent() > -1 && SDL_GetTicks() - player.getMysteryMark() < 3000)
+                            {
+                                renderText( eventName[player.getMysteryEvent()],
+                                            player.getX() - LENGTH_UNIT,
+                                            player.getY() + BOARD_HEIGHT - LENGTH_UNIT * 8,
+                                            false, RIGHT, BOTTOM, 1.25 );
+                            }
+                            player.handleMysteryEvents( Tqueue );
+                            if (mod[LINECAP] == 150 && player.getLine() >= mod[LINECAP] ) {player.terminateGame(); win = true;}
                             break;
                     }
+                    SDL_SetRenderTarget( renderer, NULL );
+                    if ( player.getMysteryEvent() == UPSIDE_DOWN ) SDL_RenderCopyEx( renderer, foreground, NULL, NULL, 180, NULL, SDL_FLIP_NONE );
+                    else SDL_RenderCopy( renderer, foreground, NULL, NULL );
                     if ( scene == PAUSE ) { pauseMark = SDL_GetTicks(); stopMusic( false ); }
                 }
                 else
@@ -249,7 +265,7 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                 }
 
                 endMark = SDL_GetTicks();
-                while ( win && SDL_GetTicks() - endMark <= 10000 )
+                while ( win && SDL_GetTicks() - endMark <= 6500 )
                 {
                     clearScreen();
                     bgImage.render();
@@ -261,9 +277,9 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                     {
                         SDL_SetTextureAlphaMod( foreground, min(255 * (int)(SDL_GetTicks() - endMark) / 500, 255) );
                     }
-                    else if ( SDL_GetTicks() - endMark > 9500 )
+                    else if ( SDL_GetTicks() - endMark > 6000 )
                     {
-                        SDL_SetTextureAlphaMod( foreground, max(255 * (int)(10000 - SDL_GetTicks() + endMark) / 500, 0) );
+                        SDL_SetTextureAlphaMod( foreground, max(255 * (int)(6500 - SDL_GetTicks() + endMark) / 500, 0) );
                     }
                     SDL_RenderCopy( renderer, foreground, NULL, NULL );
                     SDL_RenderPresent( renderer );
@@ -361,7 +377,11 @@ void settingRules( bool isSolo, int gameMode, int &activeButton, bool &adjusted,
         mod[ACTIVATE_MYSTERY] = 0;
         if ( adjusted )
         {
-            if ( abs(activeButton) == LINECAP + 1 ) mod[LINECAP] +=  10 * (abs(activeButton) / activeButton);
+            if ( abs(activeButton) == LINECAP + 1 )
+            {
+                if ( gameMode == MYSTERY ) mod[LINECAP] = activeButton > 0 ? -1 : 150;
+                else mod[LINECAP] +=  10 * (abs(activeButton) / activeButton);
+            }
             else mod[abs(activeButton) - 1] +=  activeButton != 0 ? abs(activeButton) / activeButton : 0;
             adjusted = false;
         }
@@ -394,12 +414,13 @@ void settingRules( bool isSolo, int gameMode, int &activeButton, bool &adjusted,
                 mod[ACTIVATE_MYSTERY] = 1;
                 if (mod[LINECAP] != -1 && mod[LINECAP] != 150) mod[LINECAP] = 150;
                 renderText( "GO ENDLESS?" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                renderText( mod[LINECAP] == -1 ? "Endless" : to_string( mod[LINECAP] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 16, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
+                renderText( mod[LINECAP] == -1 ? "Endless" : to_string( mod[LINECAP] ) + " Lines", WINDOW_WIDTH / 2, LENGTH_UNIT * 16, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
                 activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 16, mod[LINECAP] == 150, mod[LINECAP] == -1 ) * (LINECAP + 1);
 
                 renderText( "INITIAL SPEED LEVEL" , WINDOW_WIDTH / 2, LENGTH_UNIT * 20, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
                 renderText( to_string( mod[LEVEL] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 22, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 22, mod[LEVEL] == 1, mod[LEVEL] == 15 ) * (LEVEL + 1);
+                int temp = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 22, mod[LEVEL] == 1, mod[LEVEL] == 15 ) * (LEVEL + 1);
+                if ( temp != 0 ) activeButton = temp;
                 break;
         }
     }

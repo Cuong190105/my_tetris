@@ -27,6 +27,8 @@ Player::Player( int _level, int _mode, int _x, int _y )
     setLevel(_level);
     bonus = 0;
     delaySpawnMark = SDL_GetTicks();
+    turn = 0;
+    mysteryEvent = -1;
 }
 
 Player::~Player() {}
@@ -65,6 +67,9 @@ void Player::terminateGame() { gameOver = true; }
 bool Player::isGameOver() { return gameOver; }
 
 int Player::getMysteryEvent() const { return mysteryEvent; }
+int Player::getMysteryMark() const { return mysteryMark; }
+
+int Player::getSpawnDelayMark() const { return delaySpawnMark; }
 
 void Player::setX( int _x ) { x = _x; }
 int Player::getX() const{ return x; }
@@ -75,7 +80,8 @@ int Player::getY() const { return y; }
 int Player::getGhostRow() const
 {
     //In some cases, the first (& second) row of tetromino container is empty.
-    //So It's still valid for them to stay out of bound. 
+    //So It's still valid for them to stay out of bound.
+    if ( tetr.getType() == BOMB_PIECE ) return tetr.getRow();
     for ( int i = 0; i <= tetr.getRow() + 2; i++ )
     {
         if ( checkCollision( tetr, - i - 1 ) ) return tetr.getRow() - i;
@@ -111,23 +117,40 @@ bool Player::checkCollision( const Tetromino &tetr, int rowAdjustment, int colAd
 
 void Player::lockTetromino()
 {
+    turn ++;
     playSfx( LOCK );
-    for ( int row = 0; row < tetr.getContainerSize(); row++ )
-        for ( int col = 0; col < tetr.getContainerSize(); col++ )
-            if ( tetr.getCellState(row, col) != 0 )
-            {
-                pb.modifyCell( tetr.getRow() + row, tetr.getCol() + col, tetr.getCellState(row, col) );
-            }
-    int lineCleared = pb.completedRow( tetr.getRow() + tetr.getContainerSize() - 1, tetr.getRow() );
-    bool allClear = true;
-    for ( int row = 0; row < HEIGHT_BY_TILE; row++ )
+    if ( tetr.getType() == BOMB_PIECE )
     {
-        for ( int col = 0; col < WIDTH_BY_TILE; col++ )
-            if ( pb.getCellState( row, col ) > 0 ) { allClear = false; break; }
-        if ( !allClear ) break;
+        int cnt = 0;
+        for ( int row = max(0, tetr.getRow() - 2); row < min( HEIGHT_BY_TILE, tetr.getRow() + 3); row++ )
+        {
+            for ( int col = max(0, tetr.getCol() - 3); col < min( WIDTH_BY_TILE, tetr.getCol() + 4); col++ )
+            {
+                if ( pb.getCellState( row, col ) > 0 ) cnt ++;
+                pb.modifyCell( row, col, CLEAR );
+            }
+        }
+        score += 20 * cnt;
     }
-    if ( allClear ) bonus |= ALLCLEAR;
-    updateScore( lineCleared );
+    else
+    {
+        for ( int row = 0; row < tetr.getContainerSize(); row++ )
+            for ( int col = 0; col < tetr.getContainerSize(); col++ )
+                if ( tetr.getCellState(row, col) != 0 )
+                {
+                    pb.modifyCell( tetr.getRow() + row, tetr.getCol() + col, tetr.getCellState(row, col) );
+                }
+        int lineCleared = pb.completedRow( tetr.getRow() + tetr.getContainerSize() - 1, tetr.getRow() );
+        bool allClear = true;
+        for ( int row = 0; row < HEIGHT_BY_TILE; row++ )
+        {
+            for ( int col = 0; col < WIDTH_BY_TILE; col++ )
+                if ( pb.getCellState( row, col ) > 0 ) { allClear = false; break; }
+            if ( !allClear ) break;
+        }
+        if ( allClear ) bonus |= ALLCLEAR;
+        updateScore( lineCleared );
+    }
     tetr.voidPiece();
     delaySpawnMark = SDL_GetTicks();
     lockMark = SDL_GetTicks();
@@ -135,7 +158,7 @@ void Player::lockTetromino()
 
 void Player::movePieceHorizontally( bool right )
 {
-    if ( !checkCollision( tetr, 0, right * 2 - 1 ) )
+    if ( tetr.getType() == BOMB_PIECE && (( right && tetr.getCol() < WIDTH_BY_TILE - 1) || (!right && tetr.getCol() > 0)) || !checkCollision( tetr, 0, right * 2 - 1 ) )
     {
         tetr.updateCol( tetr.getCol() + right * 2 - 1 );
         lastMove = MOVE_LR;
@@ -161,8 +184,8 @@ void Player::dropPiece( bool isHardDrop, bool isGravityPull )
     }
     else
     {
-        //Soft drop only locks the current piece if it cannot move downwards anymore. 
-        if ( !checkCollision( tetr, -1 ) )
+        //Soft drop only locks the current piece if it cannot move downwards anymore.
+        if ( (tetr.getType() == BOMB_PIECE && tetr.getRow() > 0 ) || !checkCollision( tetr, -1 ) )
         {
             tetr.updateRow( tetr.getRow() - 1 );
             lastMove = DROP;
@@ -184,11 +207,7 @@ void Player::dropPiece( bool isHardDrop, bool isGravityPull )
 
 void Player::rotatePiece( bool rotateClockwise )
 {
-    //O piece doesn't need rotating
-    if ( tetr.getType() == O_PIECE ) return;
-
-    //tmp is the result of rotating this piece. I piece is declared to spawn 1 row lower,
-    //so we add 1 to maintain the current row for the rotation.
+    //tmp is the result of rotating this piece.
     Tetromino tmp = tetr;
 
     //Rotate state matrix 90deg, direction depending on rotateClockwise flag
@@ -296,8 +315,6 @@ void Player::rotatePiece( bool rotateClockwise )
         if ( !checkCollision( tmp, rowAdjustments, colAdjustments ) )
         {
             tetr.updateRotationState( tetr.getRotationState() + ( rotateClockwise ? 1 : -1 ) );
-            if ( tetr.getRotationState() == 4 ) tetr.updateRotationState(0);
-            else if ( tetr.getRotationState() == -1 ) tetr.updateRotationState(3);
             for ( int i = 0; i < tetr.getContainerSize(); i++ )
             {
                 for ( int j = 0; j < tetr.getContainerSize(); j++ )
@@ -322,7 +339,7 @@ void Player::lockDelayHandler()
 
 void Player::gravityPull()
 {
-    if ( checkCollision( tetr, -1 ) )
+    if ( tetr.getType() != BOMB_PIECE && checkCollision( tetr, -1 ) )
     {
         lockDelayHandler();
     }
@@ -459,14 +476,34 @@ void Player::updateScore( int lineCleared, int delta )
 void Player::handleMysteryEvents( vector<Tetromino> &Tqueue )
 {
     static int tmp = 0;
-    static bool generatedTmp = false;
-    Uint32 start;
-    if ( mysteryEvent == -1 ) mysteryEvent = rand() % EVENT_NUMBER;
+    static bool eventCreated = true;
+    const int TURNS_PER_EVENT = 10;
+    if ( turn == TURNS_PER_EVENT )
+    {
+        if ( eventCreated )
+        {
+            mysteryEvent = -1;
+            delaySpawnMark = SDL_GetTicks() + 1000;
+            eventCreated = false;
+            mysteryMark = SDL_GetTicks();
+        }
+        else if ( SDL_GetTicks() - mysteryMark > 500 )
+        {
+            mysteryMark = SDL_GetTicks();
+            do {mysteryEvent = rand() % EVENT_NUMBER;} while (mysteryEvent == UNSTABLE);
+            // mysteryEvent = BOMB;
+            tmp = 0;
+            turn = 0;
+        }
+    }
     switch( mysteryEvent )
     {
-        // case UPSIDE_DOWN: Use a temporary texture to render the whole playfield on it then rotate it.
+        case UPSIDE_DOWN:
+            if (!eventCreated) {eventCreated = true; delaySpawnMark = SDL_GetTicks() + 100;}
+            break;
+
         case UNSTABLE:
-            if (!generatedTmp)
+            if (!eventCreated)
             {
                 tmp = rand() % 5 + 1;
                 for ( int i = 0; i < tmp; i++ )
@@ -475,6 +512,7 @@ void Player::handleMysteryEvents( vector<Tetromino> &Tqueue )
                     for ( int col = 0; col < Tqueue[i].getContainerSize(); col++ )
                     if (Tqueue[i].getCellState(row, col) != 0) Tqueue[i].modifyCell( row, col, UNSTABLE_PIECE );
                 }
+                eventCreated = true;
             }
             else
             {
@@ -490,30 +528,32 @@ void Player::handleMysteryEvents( vector<Tetromino> &Tqueue )
                     if ( !stable ) unstableRemaining++;
                 }
                 tmp = unstableRemaining;
-                if (tmp == 0) {mysteryEvent = -1; generatedTmp = false;}
             }
             break;
         case BOMB:
-            if (!generatedTmp) 
+            if ( !eventCreated )
             {
                 Tqueue.insert(Tqueue.begin(), Tetromino( BOMB_PIECE ));
-                generatedTmp = true;
+                eventCreated = true;
+                delaySpawnMark = SDL_GetTicks() + 100;
             }
-            mysteryEvent = -1;
             break;
         case GIANT:
-            tetr.makeItGiant();
-            mysteryEvent = -1;
+            if ( !eventCreated )
+            {
+                Tqueue[0].makeItGiant();
+                eventCreated = true;
+                delaySpawnMark = SDL_GetTicks() + 100;
+            }
             break;
         case ADD_GARBAGE:
-            tmp = rand() % 10 + 1;
-            start = SDL_GetTicks();
-            for ( int i = 0; i < tmp; i++ )
+            if ( !eventCreated )
             {
-                if ( SDL_GetTicks() - start < 1000 * i / 6 )
-                {
-                    SDL_Delay(1000 * i / 6 - (SDL_GetTicks() - start));
-                }
+                tmp = rand() % 7 + 1;
+                eventCreated = true;
+            }
+            else if ( tmp > 0 && SDL_GetTicks() - mysteryMark > 1000 / 9 )
+            {
                 int hole = rand() % WIDTH_BY_TILE;
                 pb.addRow( 0 );
                 for ( int j = 0; j < WIDTH_BY_TILE; j++ )
@@ -521,36 +561,33 @@ void Player::handleMysteryEvents( vector<Tetromino> &Tqueue )
                     if ( j == hole ) continue;
                     pb.modifyCell( 0, j, GARBAGE_PIECE );
                 }
-                displayBoard();
-                SDL_RenderPresent( renderer );
+                mysteryMark = SDL_GetTicks();
+                tmp --;
+                if (tmp != 0) delaySpawnMark = SDL_GetTicks() + 1000 / 8;
             }
-            mysteryEvent = -1;
             break;
         case CORRUPTED:
-            if ( !generatedTmp ) tmp = rand() % 16 + 10;
-            for (int i = 0; i < Tqueue.size() && tmp > 0; i++)
+        {
+            if ( !eventCreated )
             {
-                int intactCell = 0;
-                for (int i = 0; i < Tqueue[i].getContainerSize(); i++)
-                {
-                    for (int j = 0; j < Tqueue[i].getContainerSize(); j++)
-                    {
-                        if (Tqueue[i].getCellState( i, j ) > 0) intactCell++;
-                    }
-                }
-                if (intactCell == 4) {Tqueue[i].corruptPiece(); tmp--;}
+                tmp = rand() % 16 + 10;
+                eventCreated = true;
             }
-            if (tmp == 0) {mysteryEvent = -1; generatedTmp = false;}
-            break;
-        case HORIZONTAL_SHIFT:
-            tmp = rand() % 8 + 5;
-            start = SDL_GetTicks();
-            for (int i = 0; i < tmp; i++)
+            else if (tmp > 0) for (int i = 0; i < Tqueue.size() && tmp > 0; i++)
             {
-                if ( SDL_GetTicks() - start < 1000 * i / 6 )
-                {
-                    SDL_Delay( 1000 * i / 6 - (SDL_GetTicks() - start) );
-                }
+                if ( !Tqueue[i].isCorrupted() ) { Tqueue[i].corruptPiece(); tmp --; }
+            }
+            delaySpawnMark = SDL_GetTicks() + 100;
+            break;
+        }
+        case HORIZONTAL_SHIFT:
+            if ( !eventCreated )
+            {
+                tmp = rand() % 8 + 5;
+                eventCreated = true;
+            }
+            else if ( tmp > 0 && SDL_GetTicks() - mysteryMark > 1000 / 9 )
+            {
                 for (int j = 0; j < HEIGHT_BY_TILE; j++)
                 {
                     int popped = pb.getCellState( j, 0 );
@@ -560,10 +597,10 @@ void Player::handleMysteryEvents( vector<Tetromino> &Tqueue )
                     }
                     pb.modifyCell( j, WIDTH_BY_TILE - 1, popped );
                 }
-                displayBoard();
-                SDL_RenderPresent( renderer );
+                mysteryMark = SDL_GetTicks();
+                tmp --;
+                if (tmp != 0) delaySpawnMark = SDL_GetTicks() + 1000 / 8;
             }
-            mysteryEvent = -1;
             break;
         default:
             break;
@@ -574,9 +611,23 @@ void Player::swapHoldPiece()
 {
     if ( !holdLock )
     {
-        int tmp = hold.getType();
-        hold = Tetromino( tetr.getType() );
-        tetr = Tetromino( tmp );
+        Tetromino tmp = hold;
+        hold = tetr;
+        hold.updateCol( START_COL - (hold.getContainerSize() > 4 ? hold.getContainerSize() / 2 - 1 : 0) );
+        hold.updateRow( START_ROW - (hold.getType() == I_PIECE) - (hold.getContainerSize() > 4 ? hold.getContainerSize() / 2 : 0) );
+        while ( hold.getRotationState() != 0 )
+        {
+            for ( int i = 0; i < hold.getContainerSize(); i++ )
+            {
+                for ( int j = 0; j < hold.getContainerSize(); j++ )
+                {
+                    hold.modifyCell( tetr.getContainerSize() - j - 1, i, tetr.getCellState( i, j ) ); 
+                }
+            }
+            tetr = hold;
+            hold.updateRotationState( hold.getRotationState() + 1 );
+        } 
+        tetr = tmp;
         holdLock = true;
         movesBeforeLock = 0;
         lowestRow = tetr.getRow();
@@ -624,7 +675,7 @@ void Player::displayBoard()
 void Player::displayBoardCell()
 {
     const float DURATION = 3000;
-    const int FLASH_IO_DURATION = lockDelay / 2; 
+    const int FLASH_IO_DURATION = lockDelay / 5; 
     float scale = 1;
     int adjust = 0;
     bool needClearing = false;
@@ -690,7 +741,7 @@ void Player::displayCurrentTetromino()
 
 void Player::displayPreviewTetromino( int _x, int _y, const Tetromino &Ptetr )
 {
-        //Dimensions of a preview box.
+    //Dimensions of a preview box.
     const int BOX_WIDTH = TILE_WIDTH * 3;
     const int BOX_HEIGHT = TILE_WIDTH * 2;
     const int PREVIEW_TILE_WIDTH = TILE_WIDTH * 2 / 3;
@@ -701,17 +752,18 @@ void Player::displayPreviewTetromino( int _x, int _y, const Tetromino &Ptetr )
     const int CENTER_X = BOX_WIDTH / 2 + _x;
     const int CENTER_Y = BOX_HEIGHT / 2 + _y;
 
-    if ( Ptetr.getType() == I_PIECE )    offsetY = PREVIEW_TILE_WIDTH * 5 / 2;
-    else                                offsetY = PREVIEW_TILE_WIDTH * 2;
+    if ( Ptetr.getType() == I_PIECE )           offsetY = PREVIEW_TILE_WIDTH * 5 / 2;
+    else if ( Ptetr.getType() == BOMB_PIECE)    offsetY = PREVIEW_TILE_WIDTH * 3 / 2;
+    else                                        offsetY = PREVIEW_TILE_WIDTH * 2;
 
-    offsetX = Ptetr.getContainerSize() * PREVIEW_TILE_WIDTH / 2;
+    offsetX = Ptetr.getContainerSize() * PREVIEW_TILE_WIDTH / 2 / (Ptetr.getContainerSize() > 4 ? 2 : 1);
 
     for ( int row = 0; row < Ptetr.getContainerSize(); row++ )
         for ( int col = 0; col < Ptetr.getContainerSize(); col++ )
             if ( Ptetr.getCellState( row, col ) != 0 )
-                tileSpriteSheet.render( CENTER_X - offsetX + col * PREVIEW_TILE_WIDTH,
-                                        CENTER_Y + offsetY - (row + 1) * PREVIEW_TILE_WIDTH,
-                                        PREVIEW_TILE_WIDTH, PREVIEW_TILE_WIDTH,
+                tileSpriteSheet.render( CENTER_X - offsetX + col * PREVIEW_TILE_WIDTH / (Ptetr.getContainerSize() > 4 ? 2 : 1),
+                                        CENTER_Y + offsetY - (row + 1) * PREVIEW_TILE_WIDTH / (Ptetr.getContainerSize() > 4 ? 2 : 1),
+                                        PREVIEW_TILE_WIDTH / (Ptetr.getContainerSize() > 4 ? 2 : 1), PREVIEW_TILE_WIDTH / (Ptetr.getContainerSize() > 4 ? 2 : 1),
                                         &tileSpriteClips[ Ptetr.getCellState( row, col ) ] );
 }
 
@@ -748,7 +800,7 @@ void Player::ingameProgress( const vector<Tetromino> &Tqueue, int &queuePosition
     {   
         if ( tetr.getType() == 0 )
         {
-            if ( SDL_GetTicks() - delaySpawnMark > SPAWN_DELAY )
+            if ( (int)SDL_GetTicks() - (int)delaySpawnMark > SPAWN_DELAY )
             {
                 pullNewTetromino( Tqueue );
                 queuePosition++;
@@ -787,7 +839,11 @@ void Player::handlingKeyPress( bool &gameOver, int &scene )
             switch( event.key.keysym.sym )
             {
                 case SDLK_SPACE:
-                    dropPiece( true );
+                    if ( mode == MYSTERY && tetr.getType() == BOMB_PIECE )
+                    {
+                        lockTetromino();
+                    }
+                    else dropPiece( true );
                     break;
                 //Rotates clockwise
                 case SDLK_UP:

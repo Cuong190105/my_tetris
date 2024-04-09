@@ -20,6 +20,8 @@ class Player
         int score, line, level;
         int mode;
 
+        //Turn counter in mystery mode (A turn is the time a piece is spawned then locked onto the stack)
+        int turn;
 
         //Marks the time a piece locked in for delaying spawning a new piece
         Uint32 delaySpawnMark;
@@ -68,8 +70,8 @@ class Player
         //Stores current event in Mystery mode (-1 for no event)
         int mysteryEvent;
 
-        //Marks event start time
-        Uint32 eventMark;
+        //Marks start time of current event
+        Uint32 mysteryMark;
 
         //Stores player's status
         bool gameOver;
@@ -91,6 +93,10 @@ class Player
         int getMode() const;
         
         int getMysteryEvent() const;
+
+        int getMysteryMark() const;
+        
+        int getSpawnDelayMark() const;
 
         void setLockDelay();
 

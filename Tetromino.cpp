@@ -11,6 +11,7 @@ Tetromino::Tetromino( int _type, int row, int col )
 {
     type = _type;
     rotationState = 0;
+    corrupted = false;
     currentCol = col;
     //I pieces spawn 1 row lower than usual
     currentRow = row - ( _type == I_PIECE );
@@ -132,12 +133,14 @@ void Tetromino::updateRow( int row )
 
 void Tetromino::updateRotationState( int newState )
 {
-    rotationState = newState;
+    if ( newState == 4 ) rotationState = 0;
+    else if ( newState == -1 ) rotationState = 3;
+    else rotationState = newState;
 }
 
 void Tetromino::makeItGiant()
 {
-    vector<vector<int>> newState ( containerSize * 2, vector<int>(containerSize * 2) );
+    vector<vector<int>> newState ( containerSize * 2, vector<int>(containerSize * 2, 0) );
     for (int i = 0; i < containerSize; i++)
     {
         for (int j = 0; j < containerSize; j++)
@@ -154,10 +157,14 @@ void Tetromino::makeItGiant()
     currentCol -= containerSize - 1;
     currentRow -= containerSize;
     containerSize *= 2;
-}
+    state = newState;
+ }
+
+bool Tetromino::isCorrupted() const { return corrupted; }
 
 void Tetromino::corruptPiece()
 {
+    corrupted = true;
     int voidCell = rand() % 4 + 1;
     int row = 0, col = 0;
     while (voidCell > 0)
@@ -167,8 +174,9 @@ void Tetromino::corruptPiece()
             col = 0;
             row++;
         }
-        if (row == containerSize) row=0;
+        if (row == containerSize) row = 0;
         if (state[row][col] != 0) voidCell--;
+        col++;
     }
-    
+    state[row][col] = 0;
 }

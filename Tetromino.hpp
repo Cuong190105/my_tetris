@@ -33,6 +33,7 @@ class Tetromino {
         */
         int rotationState;
 
+        bool corrupted;
     public:
         //Default constructor with no arguments
         Tetromino();
@@ -80,6 +81,8 @@ class Tetromino {
         void makeItGiant();
         
         void corruptPiece();
+
+        bool isCorrupted() const;
 };
 
 #endif
