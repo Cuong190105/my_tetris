@@ -3,7 +3,12 @@
 #include <iostream>
 using namespace std;
 
-
+const int WIDTH_BY_TILE = 10;
+const int HEIGHT_BY_TILE = 30;
+int TILE_WIDTH = LENGTH_UNIT * playfieldScale;
+const int HIDDEN_ROW = HEIGHT_BY_TILE  - 20;
+int BOARD_WIDTH = WIDTH_BY_TILE * TILE_WIDTH;
+int BOARD_HEIGHT = ( HEIGHT_BY_TILE - HIDDEN_ROW ) * TILE_WIDTH;
 PlayBoard::PlayBoard()
 {
     boardState = vector<vector<int>>( HEIGHT_BY_TILE, vector<int>( WIDTH_BY_TILE, 0 ) );

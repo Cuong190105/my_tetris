@@ -23,6 +23,7 @@ Texture menuBackground;
 
 SDL_Renderer *renderer = NULL;
 
+int WINDOW_WIDTH, WINDOW_HEIGHT;
 
 Texture::Texture()
 {

@@ -9,8 +9,8 @@ extern SDL_Renderer *renderer;
 extern TTF_Font *fontBold;
 extern TTF_Font *fontRegular;
 
-const int WINDOW_WIDTH = 1920;
-const int WINDOW_HEIGHT = 1080;
+extern int WINDOW_WIDTH;
+extern int WINDOW_HEIGHT;
 
 class Texture
 {

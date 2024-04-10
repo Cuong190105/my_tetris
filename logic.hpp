@@ -15,5 +15,9 @@ void taskManager();
 
 void menuManager( int &scene, bool &transIn, int &players, int &gameMode, int mod[4] );
 
+void gameSettings( int &scene, int &activeButton );
+
 void pause();
+
+void applySettings();
 #endif

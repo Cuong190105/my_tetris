@@ -351,7 +351,7 @@ int adjustmentButton( int x, int y, bool disableLeft, bool disableRight )
     int mouse_x, mouse_y;
     renderAdjustmentButton( x, y, disableLeft, disableRight );
     SDL_GetMouseState( &mouse_x, &mouse_y );
-    if ( mouse_y >= y && mouse_y <= y + LENGTH_UNIT )
+    if ( mouse_y >= y - LENGTH_UNIT / 2 && mouse_y <= y + LENGTH_UNIT / 2 )
     {
         if ( (!disableLeft) && (mouse_x >= x + LEFT_ADJUSTMENTBUTTON_X) && (mouse_x <= x + LEFT_ADJUSTMENTBUTTON_X + LENGTH_UNIT) )
         {
@@ -388,38 +388,38 @@ void settingRules( bool isSolo, int gameMode, int &activeButton, bool &adjusted,
         switch( gameMode )
         {
             case CLASSIC:
-                renderText( "INITIAL SPEED LEVEL" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                renderText( to_string( mod[LEVEL] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 16, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 16, mod[LEVEL] == 1, mod[LEVEL] == 19) * (LEVEL + 1);
+                renderText( "INITIAL SPEED LEVEL" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                renderText( to_string( mod[LEVEL] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 17, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 17, mod[LEVEL] == 1, mod[LEVEL] == 19) * (LEVEL + 1);
                 break;
             case SPRINT:
                 mod[LEVEL] = 1;
                 if (mod[LINECAP] < 40 || mod[LINECAP] > 100) {mod[LINECAP] = 40;}
-                renderText( "SET LINE TARGET" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                renderText( to_string( mod[LINECAP] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 16, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 16, mod[LINECAP] == 40, mod[LINECAP] == 100 ) * (LINECAP + 1);
+                renderText( "SET LINE TARGET" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                renderText( to_string( mod[LINECAP] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 17, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 17, mod[LINECAP] == 40, mod[LINECAP] == 100 ) * (LINECAP + 1);
                 break;
             case BLITZ:
                 mod[LEVEL] = 1;
-                renderText( "SET TIME LIMIT" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                renderText( to_string( mod[TIME] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 16, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 16, mod[TIME] == 2, mod[TIME] == 10 ) * (TIME + 1);
+                renderText( "SET TIME LIMIT" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                renderText( to_string( mod[TIME] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 17, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 17, mod[TIME] == 2, mod[TIME] == 10 ) * (TIME + 1);
                 break;
             case MASTER:
-                renderText( "INITIAL SPEED LEVEL" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                renderText( "M" + to_string( mod[LEVEL] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 16, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 16, mod[LEVEL] == 1, mod[LEVEL] == 30 ) * (LEVEL + 1);
+                renderText( "INITIAL SPEED LEVEL" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                renderText( "M" + to_string( mod[LEVEL] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 17, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 17, mod[LEVEL] == 1, mod[LEVEL] == 30 ) * (LEVEL + 1);
                 break;
             case MYSTERY:
                 mod[ACTIVATE_MYSTERY] = 1;
                 if (mod[LINECAP] != -1 && mod[LINECAP] != 150) mod[LINECAP] = 150;
-                renderText( "GO ENDLESS?" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                renderText( mod[LINECAP] == -1 ? "Endless" : to_string( mod[LINECAP] ) + " Lines", WINDOW_WIDTH / 2, LENGTH_UNIT * 16, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 16, mod[LINECAP] == 150, mod[LINECAP] == -1 ) * (LINECAP + 1);
+                renderText( "GO ENDLESS?" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                renderText( mod[LINECAP] == -1 ? "Endless" : to_string( mod[LINECAP] ) + " Lines", WINDOW_WIDTH / 2, LENGTH_UNIT * 17, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 17, mod[LINECAP] == 150, mod[LINECAP] == -1 ) * (LINECAP + 1);
 
-                renderText( "INITIAL SPEED LEVEL" , WINDOW_WIDTH / 2, LENGTH_UNIT * 20, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                renderText( to_string( mod[LEVEL] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 22, false, CENTER, TOP, 1, SDL_Color {255, 255, 255} );
-                int temp = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 22, mod[LEVEL] == 1, mod[LEVEL] == 15 ) * (LEVEL + 1);
+                renderText( "INITIAL SPEED LEVEL" , WINDOW_WIDTH / 2, LENGTH_UNIT * 20, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                renderText( to_string( mod[LEVEL] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 23, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                int temp = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 23, mod[LEVEL] == 1, mod[LEVEL] == 15 ) * (LEVEL + 1);
                 if ( temp != 0 ) activeButton = temp;
                 break;
         }
@@ -446,7 +446,7 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
     const int ANIMATION_DURATION = 500;
     while ( scene != INGAME && scene != QUIT )
     {
-        clearScreen();
+        clearScreen();;
         renderMenuBackground();
         generateTetromino( floating );
         renderFloatingTetromino( floating );
@@ -474,8 +474,11 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
                 backActive = handleBackButton( mouse_x, mouse_y );
                 break;
 
-            case MULTI_MENU:
             case SETTINGS:
+                gameSettings( scene, activeButton );
+                backActive = handleBackButton( mouse_x, mouse_y );
+                break;
+            case MULTI_MENU:
                 renderText( "Under Construction", WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, true, CENTER, MIDDLE, 3, SDL_Color {255, 255, 255} );
                 backActive = handleBackButton( mouse_x, mouse_y );
                 break;
@@ -563,6 +566,80 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
     }
 }
 
+int adjustmentSlider( int level, int x, int y )
+{
+    int mouse_x, mouse_y;
+    SDL_GetMouseState( &mouse_x, &mouse_y );
+    Texture slider;
+    const string SLIDER_BG = "src/media/img/bg_slider.png";
+    const string SLIDER_FG = "src/media/img/fg_slider.png";
+    const string SLIDER_HEAD = "src/media/img/slider_head.png";
+    slider.loadFromFile(SLIDER_BG);
+    slider.render( x - LENGTH_UNIT * 5, y - LENGTH_UNIT / 4, LENGTH_UNIT * 10, LENGTH_UNIT / 2 );
+    slider.loadFromFile(SLIDER_FG);
+    slider.render( x - LENGTH_UNIT * 5, y - LENGTH_UNIT / 4, LENGTH_UNIT * level / 10, LENGTH_UNIT / 2 );
+    slider.loadFromFile(SLIDER_HEAD);
+    slider.render( x + LENGTH_UNIT * (level - 50) / 10 - LENGTH_UNIT / 2, y - LENGTH_UNIT / 2, LENGTH_UNIT, LENGTH_UNIT );
+    if (mouse_x >= x - LENGTH_UNIT * 5 && mouse_x <= x + LENGTH_UNIT * 5 && mouse_y >= y - LENGTH_UNIT /2 && mouse_y <= y + LENGTH_UNIT / 2)
+    {
+
+    }
+}
+
+void gameSettings( int &scene, int &activeButton )
+{
+    enum category { RESOLUTION, BGM, SFX, PLAYFIELD_ELEMENT_SIZE, NEXT_BOX };
+    const int HEIGHT_ALLOWED[] = { 720, 768, 900, 1080, 1440, 2160 };
+    static bool change_flag = false;
+    if ( scene == SETTINGS )
+    {
+        enum settingPage { GENERAL, KEYBINDING };
+        static int page = GENERAL;
+        renderText( "SETTINGS" , LENGTH_UNIT * 6, LENGTH_UNIT * 4, false, LEFT, MIDDLE, 3, SDL_Color {255, 255, 255} );
+        SDL_Rect rect { LENGTH_UNIT * 14, LENGTH_UNIT * 8, LENGTH_UNIT * 36, LENGTH_UNIT * 24 };
+        SDL_SetRenderDrawColor( renderer, 0, 0, 0, 225 );
+        SDL_RenderFillRect( renderer, &rect );
+
+        switch(page)
+        {
+            case GENERAL:
+            {
+                static int activeSlider = 0;
+                int tmp = 0;
+                renderText( "RESOLUTION" , LENGTH_UNIT * 16, LENGTH_UNIT * 12, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                renderText( to_string(heightDimension * 16 / 9) + "x" + to_string(heightDimension), LENGTH_UNIT * 42, LENGTH_UNIT * 12, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                activeButton = adjustmentButton( LENGTH_UNIT * 42, LENGTH_UNIT * 12, heightDimension == HEIGHT_ALLOWED[0], heightDimension == HEIGHT_ALLOWED[5] ) * (RESOLUTION + 1);
+                
+                renderText( "BACKGROUND MUSIC" , LENGTH_UNIT * 16, LENGTH_UNIT * 15, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                renderText( to_string( bgmVolume ), LENGTH_UNIT * 48, LENGTH_UNIT * 15, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                tmp = adjustmentSlider( bgmVolume, LENGTH_UNIT * 40, LENGTH_UNIT * 15);
+                
+                renderText( "SFX" , LENGTH_UNIT * 16, LENGTH_UNIT * 18, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                renderText( to_string( sfxVolume ), LENGTH_UNIT * 48, LENGTH_UNIT * 18, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                tmp = adjustmentSlider( sfxVolume, LENGTH_UNIT * 40, LENGTH_UNIT * 18);
+
+                renderText( "SCALE PLAYFIELD ELEMENTS" , LENGTH_UNIT * 16, LENGTH_UNIT * 21, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                renderText( to_string( (int)(playfieldScale * 100) ) + "%", LENGTH_UNIT * 48, LENGTH_UNIT * 21, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                tmp = adjustmentSlider( (playfieldScale - 0.5) / 0.0084, LENGTH_UNIT * 40, LENGTH_UNIT * 21);
+                
+                renderText( "SHOW GHOST" , LENGTH_UNIT * 16, LENGTH_UNIT * 24, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                renderText( (showGhost ? "ENABLED" : "DISABLED" ), LENGTH_UNIT * 42, LENGTH_UNIT * 24, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                activeButton = adjustmentButton( LENGTH_UNIT * 42, LENGTH_UNIT * 24, showGhost == 0, showGhost == 1 ) * (SHOW_GHOST + 1);
+                
+                renderText( "NUMBER OF NEXT BOXES" , LENGTH_UNIT * 16, LENGTH_UNIT * 27, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                renderText( to_string( nextBoxes ), LENGTH_UNIT * 42, LENGTH_UNIT * 27, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                activeButton = adjustmentButton( LENGTH_UNIT * 42, LENGTH_UNIT * 27, nextBoxes == 1, nextBoxes == 5 ) * (NEXT_BOXES + 1);
+            }
+            break;
+            case KEYBINDING:
+            {
+
+            }
+            break;
+        }
+    }
+}
+
 void taskManager()
 {
     //Current game scene
@@ -594,4 +671,21 @@ void taskManager()
                 break;
         }
     }
+}
+
+//Applies loaded settings
+void applySettings()
+{
+    if ( WINDOW_HEIGHT != heightDimension )
+    {
+        WINDOW_HEIGHT = heightDimension;
+        WINDOW_WIDTH = heightDimension * 16 / 9;
+        if (game_window != NULL) SDL_SetWindowSize( game_window, WINDOW_WIDTH, WINDOW_HEIGHT );
+    }
+
+    changeBgmVolume();
+    changeSfxVolume();
+    TILE_WIDTH = LENGTH_UNIT * playfieldScale;
+    BOARD_HEIGHT = TILE_WIDTH * (HEIGHT_BY_TILE - HIDDEN_ROW);
+    BOARD_WIDTH = TILE_WIDTH * WIDTH_BY_TILE;
 }

@@ -1,20 +1,20 @@
 #ifndef PlayBoard_hpp
 #define PlayBoard_hpp
 #include <vector>
+#include "audio.hpp"
 using namespace std;
 
-const int WIDTH_BY_TILE = 10;
-const int HEIGHT_BY_TILE = 30;
-const int TILE_WIDTH = 40;
+extern const int WIDTH_BY_TILE;
+extern const int HEIGHT_BY_TILE;
+extern int TILE_WIDTH;
 
 //11 types of tetromino block
 enum Ttype { I_PIECE = 1, J_PIECE, L_PIECE, O_PIECE, S_PIECE, Z_PIECE, T_PIECE, UNSTABLE_PIECE, GARBAGE_PIECE, BOMB_PIECE, CLEAR };
 
 //3 rows at the top of the board are hidden, at which new tetromino is spawned.
-const int HIDDEN_ROW = HEIGHT_BY_TILE  - 20;
-
-const int BOARD_WIDTH = WIDTH_BY_TILE * TILE_WIDTH;
-const int BOARD_HEIGHT = ( HEIGHT_BY_TILE - HIDDEN_ROW ) * TILE_WIDTH;
+extern const int HIDDEN_ROW;
+extern int BOARD_WIDTH;
+extern int BOARD_HEIGHT;
 
 class PlayBoard {
     private:
@@ -41,7 +41,7 @@ class PlayBoard {
         void modifyCell( int row, int col, int val );
         
         /**
-         * Clears all completed rows from row lowerRow to row upperRow
+         * Count completed rows from row lowerRow to row upperRow, and marks the tile that will be cleared
          * \return number of cleared rows
          */
         int completedRow( int upperRow, int lowerRow );

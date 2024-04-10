@@ -6,7 +6,8 @@
 
 enum HorizontalAlignment { LEFT, CENTER, RIGHT };
 enum VerticalAlignment { TOP, MIDDLE, BOTTOM };
-const int LENGTH_UNIT = 30;
+
+extern SDL_Window *game_window;
 /**
  * Renders text
  * \param text Text to be rendered

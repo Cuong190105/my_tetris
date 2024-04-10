@@ -439,7 +439,7 @@ void Player::updateScore( int lineCleared, int delta )
                     b2b = -1;
                     break;
                 default:
-                    delta += 100 * lineCleared;
+                    delta += 200 * lineCleared;
                     break;
             }
     }

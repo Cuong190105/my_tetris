@@ -5,7 +5,6 @@
 using namespace std;
 
 //--------------------------INIT & LOAD--------------------------
-SDL_Window *game_window;
 
 //Initializes SDL system, game window and renderer
 bool init();
@@ -21,6 +20,8 @@ void close();
 
 int main(int argv, char **args) {
     //Initialize SDL & Create window
+    loadSettingsFromFile();
+    applySettings();
     if ( !init() ) {
         cout << "Failed to initialize" << endl;
     }

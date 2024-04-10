@@ -1,5 +1,4 @@
 #include "audio.hpp"
-
 #include <string>
 using namespace std;
 
@@ -15,6 +14,7 @@ void playBackgroundMusic(int track)
     };
     background_music = Mix_LoadMUS(("src/media/audio/" + bg_sound[track]).c_str());
     Mix_PlayMusic( background_music, -1 );
+    Mix_VolumeMusic( MIX_MAX_VOLUME * bgmVolume / 100 );
 }
 
 void loadSfx()
@@ -37,6 +37,7 @@ void loadSfx()
 void playSfx(int fx)
 {
     Mix_PlayChannel(-1, sfx[fx], 0);
+    Mix_Volume( -1, MIX_MAX_VOLUME * sfxVolume / 100 );
 }
 
 void stopMusic( bool fade )
@@ -53,4 +54,14 @@ void pauseMusic()
 void resumeMusic()
 {
     Mix_ResumeMusic();
+}
+
+void changeSfxVolume()
+{
+    Mix_MasterVolume( MIX_MAX_VOLUME * sfxVolume / 100 );
+}
+
+void changeBgmVolume()
+{
+    Mix_VolumeMusic( MIX_MAX_VOLUME * bgmVolume / 100 );
 }

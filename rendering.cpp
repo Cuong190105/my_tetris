@@ -3,6 +3,8 @@
 #include <cstdlib>
 using namespace std;
 
+SDL_Window *game_window;
+
 void renderText( string text, int x, int y, bool isBold, int Halign, int Valign, double scale, SDL_Color color )
 {
     textTexture.loadText( text, ( isBold ? fontBold : fontRegular ), color );
@@ -403,21 +405,21 @@ void renderAdjustmentButton( int x, int y, bool disableLeft, bool disableRight )
     if (disableLeft)
     {
         adjButton.setColorMod(50, 50, 50);
-        adjButton.render( x + LEFT_ADJUSTMENTBUTTON_X, y, LENGTH_UNIT, LENGTH_UNIT, &left );
+        adjButton.render( x + LEFT_ADJUSTMENTBUTTON_X, y - LENGTH_UNIT / 2, LENGTH_UNIT, LENGTH_UNIT, &left );
         adjButton.setColorMod(255, 255, 255);
-        adjButton.render( x + RIGHT_ADJUSTMENTBUTTON_X, y, LENGTH_UNIT, LENGTH_UNIT, &right );
+        adjButton.render( x + RIGHT_ADJUSTMENTBUTTON_X, y - LENGTH_UNIT / 2, LENGTH_UNIT, LENGTH_UNIT, &right );
     }
     else if (disableRight)
     {
         adjButton.setColorMod(50, 50, 50);
-        adjButton.render( x + RIGHT_ADJUSTMENTBUTTON_X, y, LENGTH_UNIT, LENGTH_UNIT, &right );
+        adjButton.render( x + RIGHT_ADJUSTMENTBUTTON_X, y - LENGTH_UNIT / 2, LENGTH_UNIT, LENGTH_UNIT, &right );
         adjButton.setColorMod(255, 255, 255);
-        adjButton.render( x + LEFT_ADJUSTMENTBUTTON_X, y, LENGTH_UNIT, LENGTH_UNIT, &left );
+        adjButton.render( x + LEFT_ADJUSTMENTBUTTON_X, y - LENGTH_UNIT / 2, LENGTH_UNIT, LENGTH_UNIT, &left );
     }
     else
     {
-        adjButton.render( x + LEFT_ADJUSTMENTBUTTON_X, y, LENGTH_UNIT, LENGTH_UNIT, &left );
-        adjButton.render( x + RIGHT_ADJUSTMENTBUTTON_X, y, LENGTH_UNIT, LENGTH_UNIT, &right );
+        adjButton.render( x + LEFT_ADJUSTMENTBUTTON_X, y - LENGTH_UNIT / 2, LENGTH_UNIT, LENGTH_UNIT, &left );
+        adjButton.render( x + RIGHT_ADJUSTMENTBUTTON_X, y - LENGTH_UNIT / 2, LENGTH_UNIT, LENGTH_UNIT, &right );
     }
     
 }
