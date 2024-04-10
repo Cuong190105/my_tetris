@@ -118,11 +118,12 @@ bool Player::checkCollision( const Tetromino &tetr, int rowAdjustment, int colAd
 void Player::lockTetromino()
 {
     turn ++;
+    int additionDelay = 0;
     playSfx( LOCK );
     if ( tetr.getType() == BOMB_PIECE )
     {
         int cnt = 0;
-        for ( int row = max(0, tetr.getRow() - 2); row < min( HEIGHT_BY_TILE, tetr.getRow() + 3); row++ )
+        for ( int row = max(0, tetr.getRow() - 3); row < min( HEIGHT_BY_TILE, tetr.getRow() + 4); row++ )
         {
             for ( int col = max(0, tetr.getCol() - 3); col < min( WIDTH_BY_TILE, tetr.getCol() + 4); col++ )
             {
@@ -140,19 +141,23 @@ void Player::lockTetromino()
                 {
                     pb.modifyCell( tetr.getRow() + row, tetr.getCol() + col, tetr.getCellState(row, col) );
                 }
-        int lineCleared = pb.completedRow( tetr.getRow() + tetr.getContainerSize() - 1, tetr.getRow() );
-        bool allClear = true;
-        for ( int row = 0; row < HEIGHT_BY_TILE; row++ )
+        if ( tetr.getCellState( 1, 1 ) != UNSTABLE_PIECE && tetr.getCellState( 2, 2 ) != UNSTABLE_PIECE )
         {
-            for ( int col = 0; col < WIDTH_BY_TILE; col++ )
-                if ( pb.getCellState( row, col ) > 0 ) { allClear = false; break; }
-            if ( !allClear ) break;
+            int lineCleared = pb.completedRow( tetr.getRow() + tetr.getContainerSize() - 1, tetr.getRow() );
+            bool allClear = true;
+            for ( int row = 0; row < HEIGHT_BY_TILE; row++ )
+            {
+                for ( int col = 0; col < WIDTH_BY_TILE; col++ )
+                    if ( pb.getCellState( row, col ) > 0 ) { allClear = false; break; }
+                if ( !allClear ) break;
+            }
+            if ( allClear ) bonus |= ALLCLEAR;
+            updateScore( lineCleared );
         }
-        if ( allClear ) bonus |= ALLCLEAR;
-        updateScore( lineCleared );
+        else additionDelay = 150;
     }
     tetr.voidPiece();
-    delaySpawnMark = SDL_GetTicks();
+    delaySpawnMark = SDL_GetTicks() + additionDelay;
     lockMark = SDL_GetTicks();
 }
 
@@ -432,6 +437,10 @@ void Player::updateScore( int lineCleared, int delta )
                 case 1:
                     delta += 100;
                     b2b = -1;
+                    break;
+                default:
+                    delta += 100 * lineCleared;
+                    break;
             }
     }
     if ( lineCleared == 0 )
@@ -459,7 +468,8 @@ void Player::updateScore( int lineCleared, int delta )
                 case 1:
                     delta += 800;
                     break;
-
+                default:
+                    delta += 1000;
             }
         }
         if ( tspinState != NO_SPIN && lineCleared ) bonus |= B2B;
@@ -489,9 +499,8 @@ void Player::handleMysteryEvents( vector<Tetromino> &Tqueue )
         }
         else if ( SDL_GetTicks() - mysteryMark > 500 )
         {
-            mysteryMark = SDL_GetTicks();
-            do {mysteryEvent = rand() % EVENT_NUMBER;} while (mysteryEvent == UNSTABLE);
-            // mysteryEvent = BOMB;
+            mysteryEvent = rand() % EVENT_NUMBER;
+            mysteryEvent = UNSTABLE;
             tmp = 0;
             turn = 0;
         }
@@ -509,25 +518,12 @@ void Player::handleMysteryEvents( vector<Tetromino> &Tqueue )
                 for ( int i = 0; i < tmp; i++ )
                 {
                     for ( int row = 0; row < Tqueue[i].getContainerSize(); row++ )
-                    for ( int col = 0; col < Tqueue[i].getContainerSize(); col++ )
-                    if (Tqueue[i].getCellState(row, col) != 0) Tqueue[i].modifyCell( row, col, UNSTABLE_PIECE );
+                        for ( int col = 0; col < Tqueue[i].getContainerSize(); col++ )
+                        {
+                            if (Tqueue[i].getCellState(row, col) != 0) Tqueue[i].modifyCell( row, col, UNSTABLE_PIECE );
+                        }
                 }
                 eventCreated = true;
-            }
-            else
-            {
-                int unstableRemaining = 0;
-                bool stable = true;
-                for ( int i = 0; i < tmp; i++ )
-                {
-                    for ( int row = 0; row < Tqueue[i].getContainerSize(); row++ )
-                    for ( int col = 0; col < Tqueue[i].getContainerSize(); col++ )
-                    {
-                        if ( Tqueue[i].getCellState(row, col) == UNSTABLE_PIECE ) {stable = false; break;}
-                    }
-                    if ( !stable ) unstableRemaining++;
-                }
-                tmp = unstableRemaining;
             }
             break;
         case BOMB:
@@ -605,6 +601,51 @@ void Player::handleMysteryEvents( vector<Tetromino> &Tqueue )
         default:
             break;
     }
+
+    static bool playingUnstablePiece = false;
+    if ( tetr.getCellState( 1, 1 ) == UNSTABLE_PIECE || tetr.getCellState( 2, 2 ) == UNSTABLE_PIECE ) playingUnstablePiece = true;
+    if ( playingUnstablePiece && tetr.getType() == 0 )
+    {
+        Uint32 nowMark = SDL_GetTicks();
+        bool pulled = false;
+        for (int col = 0; col < WIDTH_BY_TILE; col++)
+        {
+            for (int row = 0; row < HEIGHT_BY_TILE; row++)
+            {
+                if ( pb.getCellState( row, col ) == UNSTABLE_PIECE )
+                {
+                    int lastUnstableInBlock = row;
+                    for ( ; lastUnstableInBlock > - 1; lastUnstableInBlock-- )
+                    {
+                        if ( pb.getCellState( lastUnstableInBlock - 1, col) <= 0) break;
+                        else pb.modifyCell( lastUnstableInBlock - 1, col, UNSTABLE_PIECE );
+                    }
+                    if ( lastUnstableInBlock == 0 ) {for ( int i = 0; i <= row; i++ ) pb.modifyCell( i, col, GARBAGE_PIECE );}
+                    else if ( nowMark - lockMark > 50)
+                    {
+                        pulled = true;
+                        for (int i = lastUnstableInBlock; i <= row; i++ )
+                        {
+                            pb.modifyCell( i - 1, col, UNSTABLE_PIECE );
+                            pb.modifyCell( i, col, 0 );
+                        }
+                    }
+                }
+            }
+        }
+        if ( pulled )
+        {
+            delaySpawnMark = nowMark + 300;
+            lockMark = nowMark;
+        }
+        else if ( nowMark - lockMark > 50 )
+        {
+            int clearedRow = pb.completedRow( HEIGHT_BY_TILE - 1, 0 );
+            updateScore( clearedRow );
+            playingUnstablePiece = false;
+            delaySpawnMark = SDL_GetTicks() + 50;
+        }
+    }
 }
 
 void Player::swapHoldPiece()
@@ -675,8 +716,12 @@ void Player::displayBoard()
 void Player::displayBoardCell()
 {
     const float DURATION = 3000;
-    const int FLASH_IO_DURATION = lockDelay / 5; 
+    const int FLASH_IO_DURATION = lockDelay / 5;
+
+    //Scales the size of the cells.
     float scale = 1;
+
+    //Repositions cells render origin to center it while changing their size. 
     int adjust = 0;
     bool needClearing = false;
     if ( gameOver )
@@ -685,16 +730,20 @@ void Player::displayBoardCell()
         tileSpriteSheet.setAlphaMod( max(255 - (int)((SDL_GetTicks() - pullMark) / DURATION * 255), 0) );
         adjust = - TILE_WIDTH * (scale - 1) / 2;
     }
-    for ( int row = 0; row < HEIGHT_BY_TILE; row++ )
+    for ( int col = 0; col < WIDTH_BY_TILE ; col++ )
     {
-        for ( int col = 0; col < WIDTH_BY_TILE; col++ )
+        for ( int row = 0; row < HEIGHT_BY_TILE; row++ )
         {
             int cellState = pb.getCellState( row, col );
             if ( cellState > 0)
             {
-                if ( cellState == CLEAR ) {tileSpriteSheet.setAlphaMod( 255 * max((FLASH_IO_DURATION - abs((int)(SDL_GetTicks() - lockMark - FLASH_IO_DURATION))), 0) / FLASH_IO_DURATION ); needClearing = true;}
+                if ( cellState == CLEAR )
+                {
+                    tileSpriteSheet.setAlphaMod( 255 * max((FLASH_IO_DURATION - abs((int)(SDL_GetTicks() - lockMark - FLASH_IO_DURATION))), 0) / FLASH_IO_DURATION );
+                    needClearing = true;
+                }
                 tileSpriteSheet.render( x + TILE_WIDTH * col + adjust, y + BOARD_HEIGHT - TILE_WIDTH * ( row + 1 ) + adjust, TILE_WIDTH * scale, TILE_WIDTH * scale, &tileSpriteClips[ cellState ] );
-                if ( cellState == CLEAR ) tileSpriteSheet.setAlphaMod( 255 ); 
+                if ( cellState == CLEAR ) tileSpriteSheet.setAlphaMod( 255 );
             }
         }
     }
@@ -804,7 +853,7 @@ void Player::ingameProgress( const vector<Tetromino> &Tqueue, int &queuePosition
             {
                 pullNewTetromino( Tqueue );
                 queuePosition++;
-                if ( checkCollision( tetr ) ) gameOver = true;
+                if ( tetr.getType() != BOMB_PIECE && checkCollision( tetr ) ) gameOver = true;
             }
         }
         if ( tetr.getType() != 0 ) gravityPull();

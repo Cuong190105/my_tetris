@@ -4,7 +4,7 @@
 using namespace std;
 
 const int WIDTH_BY_TILE = 10;
-const int HEIGHT_BY_TILE = 50;
+const int HEIGHT_BY_TILE = 30;
 const int TILE_WIDTH = 40;
 
 //11 types of tetromino block

@@ -84,6 +84,8 @@ Tetromino::~Tetromino() {}
 void Tetromino::voidPiece()
 {
     type = 0;
+    for (int row = 0; row < containerSize; row++)
+    for (int col = 0; col < containerSize; col++) state[row][col] = 0;
 }
 
 int Tetromino::getType() const
