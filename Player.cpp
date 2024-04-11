@@ -204,7 +204,7 @@ void Player::dropPiece( bool isHardDrop, bool isGravityPull )
                 movesBeforeLock = 0;
                 if ( checkCollision( tetr, -1 ) ) lockMark = SDL_GetTicks();
             }
-            playSfx( MOVE );
+            if ( !isGravityPull) playSfx( MOVE );
         }
         else lockDelayHandler();
     }
@@ -487,7 +487,7 @@ void Player::handleMysteryEvents( vector<Tetromino> &Tqueue )
 {
     static int tmp = 0;
     static bool eventCreated = true;
-    const int TURNS_PER_EVENT = 10;
+    const int TURNS_PER_EVENT = 30;
     if ( turn == TURNS_PER_EVENT )
     {
         if ( eventCreated )
@@ -500,7 +500,6 @@ void Player::handleMysteryEvents( vector<Tetromino> &Tqueue )
         else if ( SDL_GetTicks() - mysteryMark > 500 )
         {
             mysteryEvent = rand() % EVENT_NUMBER;
-            mysteryEvent = UNSTABLE;
             tmp = 0;
             turn = 0;
         }
@@ -573,7 +572,6 @@ void Player::handleMysteryEvents( vector<Tetromino> &Tqueue )
             {
                 if ( !Tqueue[i].isCorrupted() ) { Tqueue[i].corruptPiece(); tmp --; }
             }
-            delaySpawnMark = SDL_GetTicks() + 100;
             break;
         }
         case HORIZONTAL_SHIFT:
@@ -779,9 +777,12 @@ void Player::displayCurrentTetromino()
                                             &tileSpriteClips[ tetr.getCellState( row, col ) ]);
                     
                     //Renders this tile's ghost.
-                    int ghostOffsetY = ( tetr.getRow() - getGhostRow() ) * TILE_WIDTH;
-                    tileSpriteSheet.render( tile_x, tile_y + ghostOffsetY, 
-                                            TILE_WIDTH, TILE_WIDTH, &tileSpriteClips[ 0 ]);
+                    if (showGhost)
+                    {
+                        int ghostOffsetY = ( tetr.getRow() - getGhostRow() ) * TILE_WIDTH;
+                        tileSpriteSheet.render( tile_x, tile_y + ghostOffsetY, 
+                                                TILE_WIDTH, TILE_WIDTH, &tileSpriteClips[ 0 ]);
+                    }
                 }
             }
         }
@@ -816,7 +817,7 @@ void Player::displayPreviewTetromino( int _x, int _y, const Tetromino &Ptetr )
                                         &tileSpriteClips[ Ptetr.getCellState( row, col ) ] );
 }
 
-void Player::displayTetrominoQueue( vector<Tetromino> &Tqueue, int previewPieces, int queuePosition )
+void Player::displayTetrominoQueue( vector<Tetromino> &Tqueue, int queuePosition )
 {
     //padding between queue and playfield
     const int PADDING = TILE_WIDTH * 2 / 3;
@@ -827,7 +828,7 @@ void Player::displayTetrominoQueue( vector<Tetromino> &Tqueue, int previewPieces
     
     const int BOX_HEIGHT = TILE_WIDTH * 2;
     
-    for ( int i = 0; i < min(previewPieces, (int)Tqueue.size()); i++ )
+    for ( int i = 0; i < min(nextBoxes, (int)Tqueue.size()); i++ )
     {
         displayPreviewTetromino( TOP_LEFT_X, TOP_LEFT_Y + i * BOX_HEIGHT, Tqueue[ queuePosition + i ] );
     }

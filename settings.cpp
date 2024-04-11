@@ -1,15 +1,17 @@
 #include "settings.hpp"
 #include <iostream>
 using namespace std;
-const int LENGTH_UNIT = 30;
 const string CONFIG_FILE = "settings.txt";
-int heightDimension = 720;
+int heightDimension = 0;
+int LENGTH_UNIT = heightDimension / 36;
 int bgmVolume = 100;
 int sfxVolume = 100;
 bool showGhost = 1;
 double playfieldScale = 1;
 int nextBoxes = 5;
 int keyScanCode[NUM_KEY_FUNCTIONS] = { 29, 0, 27, 82, 6, 0, 80, 0, 79, 0, 81, 0, 44, 0 };
+int maxHeight;
+const int HEIGHT_ALLOWED[] = { 720, 768, 900, 1080, 1440, 2160 };
 
 const string CFG_NAME[] =
 {
@@ -47,6 +49,24 @@ int extractNum( string line )
     return data;
 }
 
+void validateConfig()
+{
+    for ( int i = 0; i < 6 && HEIGHT_ALLOWED[i] <= maxHeight; i++ )
+    {
+        if ( heightDimension == HEIGHT_ALLOWED[i] ) break;
+        else if ( heightDimension < HEIGHT_ALLOWED[i] ) {heightDimension = HEIGHT_ALLOWED[max(i - 1, 0)]; break; }
+        else if ( i == 5 || HEIGHT_ALLOWED[i + 1] > maxHeight ) heightDimension = HEIGHT_ALLOWED[i];
+    }
+    if ( bgmVolume < 0) bgmVolume = 0;
+    else if ( bgmVolume > 100) bgmVolume = 100;
+    if ( sfxVolume < 0) sfxVolume = 0;
+    else if ( sfxVolume > 100) sfxVolume = 100;
+    if ( playfieldScale < 0.5) playfieldScale = 0.5;
+    else if ( playfieldScale > 1.34) playfieldScale = 1.34;
+    if ( nextBoxes < 1) nextBoxes = 1;
+    else if ( nextBoxes > 5) nextBoxes = 5;
+}
+
 void loadSettingsFromFile()
 {
     ifstream settings(CONFIG_FILE);
@@ -71,6 +91,8 @@ void loadSettingsFromFile()
         settings >> line;
         playfieldScale = extractNum( line );
 
+        validateConfig();
+
         for ( int i = 0; i < NUM_KEY_FUNCTIONS; i++ )
         {
             settings >> line;
@@ -87,6 +109,19 @@ void loadSettingsFromFile()
 void saveSettings()
 {
     ofstream settings(CONFIG_FILE);
+    if ( heightDimension == 0 )
+    {
+        for ( int i = 5; i > 0; i-- )
+        {
+            if ( maxHeight > HEIGHT_ALLOWED[i] )
+            {
+                heightDimension = HEIGHT_ALLOWED[i];
+                break;
+            }
+        }
+        if ( heightDimension == 0 ) heightDimension = HEIGHT_ALLOWED[0];
+
+    }
     settings << CFG_NAME[RESOLUTION] << '=' << heightDimension << endl;
     settings << CFG_NAME[BGM_VOLUME] << '=' << bgmVolume << endl;
     settings << CFG_NAME[SFX_VOLUME] << '=' << sfxVolume << endl;

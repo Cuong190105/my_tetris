@@ -15,9 +15,10 @@ void taskManager();
 
 void menuManager( int &scene, bool &transIn, int &players, int &gameMode, int mod[4] );
 
-void gameSettings( int &scene, int &activeButton );
+void gameSettings( int &scene, int &activeButton, int &adjusted  );
 
 void pause();
 
-void applySettings();
+//Applies loaded settings
+void applySettings( int type = -1 );
 #endif

@@ -20,8 +20,7 @@ void close();
 
 int main(int argv, char **args) {
     //Initialize SDL & Create window
-    loadSettingsFromFile();
-    applySettings();
+
     if ( !init() ) {
         cout << "Failed to initialize" << endl;
     }
@@ -32,6 +31,7 @@ int main(int argv, char **args) {
         taskManager();
     }
     close();
+    saveSettings();
     return 0;
 }
 
@@ -48,6 +48,11 @@ bool init()
     }
     else
     {
+        SDL_DisplayMode dm;
+        SDL_GetDisplayMode(0, 0, &dm);
+        maxHeight = dm.h;
+        loadSettingsFromFile();
+        applySettings();
         //Set hint
         SDL_SetHint( SDL_HINT_RENDER_SCALE_QUALITY, "1" );
 
@@ -136,12 +141,12 @@ void loadMedia()
 
 
     //Load font
-    fontBold = TTF_OpenFont("src/media/fonts/gameFontBold.ttf", 30);
+    fontBold = TTF_OpenFont("src/media/fonts/gameFontBold.ttf", LENGTH_UNIT);
     if ( fontBold == NULL )
     {
         cout << "Failed to load font." << endl;
     }
-    fontRegular = TTF_OpenFont("src/media/fonts/gameFontRegular.ttf", 30);
+    fontRegular = TTF_OpenFont("src/media/fonts/gameFontRegular.ttf", LENGTH_UNIT);
     if ( fontRegular == NULL )
     {
         cout << "Failed to load font." << endl;

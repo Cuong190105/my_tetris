@@ -33,11 +33,11 @@ bool displayCountdown( int x, int y, int w, int h, Uint32 startMark );
 //Main menu buttons
 const int MAIN_MENU_BUTTONS = 4;
 extern SDL_Rect buttonBox[MAIN_MENU_BUTTONS];
-const int MAIN_MENU_BUTTON_X = LENGTH_UNIT * 8;
-const int MAIN_MENU_FIRST_BUTTON_Y = LENGTH_UNIT * 18;
-const int MAIN_MENU_BUTTON_HEIGHT = LENGTH_UNIT * 3;
-const int MAIN_MENU_BUTTON_WIDTH = LENGTH_UNIT * 16;
-const int MAIN_MENU_BUTTON_PADDING = LENGTH_UNIT;
+extern int MAIN_MENU_BUTTON_X;
+extern int MAIN_MENU_FIRST_BUTTON_Y;
+extern int MAIN_MENU_BUTTON_HEIGHT;
+extern int MAIN_MENU_BUTTON_WIDTH;
+extern int MAIN_MENU_BUTTON_PADDING;
 
 //Renders main menu screen
 void renderMenuBackground( bool stop = false );
@@ -63,16 +63,16 @@ void renderTransition( bool &transIn );
 //---------------------------SOLO MENU---------------------------
 const int SOLO_MENU_BUTTONS = 5;
 extern SDL_Rect soloMenuButtonBox[SOLO_MENU_BUTTONS];
-const int SOLO_MENU_BUTTON_X = LENGTH_UNIT * 8;
-const int SOLO_MENU_FIRST_BUTTON_Y = LENGTH_UNIT * 10;
-const int SOLO_MENU_BUTTON_HEIGHT = LENGTH_UNIT * 4;
-const int SOLO_MENU_BUTTON_WIDTH = LENGTH_UNIT * 20;
-const int SOLO_BUTTON_PADDING = LENGTH_UNIT / 5;
+extern int SOLO_MENU_BUTTON_X;
+extern int SOLO_MENU_FIRST_BUTTON_Y;
+extern int SOLO_MENU_BUTTON_HEIGHT;
+extern int SOLO_MENU_BUTTON_WIDTH;
+extern int SOLO_BUTTON_PADDING;
 extern const string soloGameModeName[];
 void renderSoloMenu( int mouse_x, int mouse_y, int &activeButton );
 
-const int LEFT_ADJUSTMENTBUTTON_X = -LENGTH_UNIT * 6;;
-const int RIGHT_ADJUSTMENTBUTTON_X = LENGTH_UNIT * 5;
+extern int LEFT_ADJUSTMENTBUTTON_X;
+extern int RIGHT_ADJUSTMENTBUTTON_X;
 void renderAdjustmentButton( int x, int y, bool disableLeft, bool disableRight );
 
 void loadRandomBackground();
@@ -82,5 +82,7 @@ void loadMenuElements();
 void renderResultScreen( const Player &player, Uint32 startMark, string time );
 
 int renderRetryScreen( bool &retryLoop, int &scene );
+
+void changeDimensions();
 
 #endif

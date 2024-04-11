@@ -135,6 +135,11 @@ void renderMenuBackground( bool stop )
 
 int buttonHighlightState[MAIN_MENU_BUTTONS];
 SDL_Rect buttonBox[MAIN_MENU_BUTTONS];
+int MAIN_MENU_BUTTON_X;
+int MAIN_MENU_FIRST_BUTTON_Y;
+int MAIN_MENU_BUTTON_HEIGHT;
+int MAIN_MENU_BUTTON_WIDTH;
+int MAIN_MENU_BUTTON_PADDING;
 
 void renderMainMenuButton( int mouse_x, int mouse_y, int &activeButton )
 {
@@ -319,6 +324,11 @@ bool handleBackButton( int mouse_x, int mouse_y )
 
 const string soloGameModeName[] = { "CLASSIC", "SPRINT", "BLITZ", "MASTER", "MYSTERY" };
 SDL_Rect soloMenuButtonBox[SOLO_MENU_BUTTONS];
+int SOLO_MENU_BUTTON_X;
+int SOLO_MENU_FIRST_BUTTON_Y;
+int SOLO_MENU_BUTTON_HEIGHT;
+int SOLO_MENU_BUTTON_WIDTH;
+int SOLO_BUTTON_PADDING;
 void renderSoloMenu( int mouse_x, int mouse_y, int &activeButton )
 {
     renderText( "SELECT GAME MODE", LENGTH_UNIT * 4, LENGTH_UNIT * 6, true, LEFT, BOTTOM, 3 );
@@ -396,6 +406,8 @@ void renderTransition( bool &transIn )
 // const int LEFT_ADJUSTMENTBUTTON_X =  -LENGTH_UNIT * 6;
 // const int RIGHT_ADJUSTMENTBUTTON_X = LENGTH_UNIT * 5;
 // ADJUSTMENT_BUTTON_WIDTH = LENGTH_UNIT;
+int LEFT_ADJUSTMENTBUTTON_X;
+int RIGHT_ADJUSTMENTBUTTON_X;
 void renderAdjustmentButton( int x, int y, bool disableLeft, bool disableRight )
 {
     Texture adjButton;
@@ -558,4 +570,35 @@ void Player::displayBonus()
         if ( time - bonusMark[2] > DURATION ) bonus -= ALLCLEAR;
     }
     // textTexture.setAlphaMod( 255 );
+}
+
+void changeDimensions()
+{
+    MAIN_MENU_BUTTON_X = LENGTH_UNIT * 8;
+    MAIN_MENU_FIRST_BUTTON_Y = LENGTH_UNIT * 18;
+    MAIN_MENU_BUTTON_HEIGHT = LENGTH_UNIT * 3;
+    MAIN_MENU_BUTTON_WIDTH = LENGTH_UNIT * 16;
+    MAIN_MENU_BUTTON_PADDING = LENGTH_UNIT;
+    SOLO_MENU_BUTTON_X = LENGTH_UNIT * 8;
+    SOLO_MENU_FIRST_BUTTON_Y = LENGTH_UNIT * 10;
+    SOLO_MENU_BUTTON_HEIGHT = LENGTH_UNIT * 4;
+    SOLO_MENU_BUTTON_WIDTH = LENGTH_UNIT * 20;
+    SOLO_BUTTON_PADDING = LENGTH_UNIT / 5;
+    LEFT_ADJUSTMENTBUTTON_X = -LENGTH_UNIT * 6;
+    RIGHT_ADJUSTMENTBUTTON_X = LENGTH_UNIT * 5;
+    for ( int i = 0; i < MAIN_MENU_BUTTONS; i++ )
+    {
+        buttonBox[i].x = MAIN_MENU_BUTTON_X;
+        buttonBox[i].y = MAIN_MENU_FIRST_BUTTON_Y + ( MAIN_MENU_BUTTON_HEIGHT + MAIN_MENU_BUTTON_PADDING ) * i;
+        buttonBox[i].w = MAIN_MENU_BUTTON_WIDTH;
+        buttonBox[i].h = MAIN_MENU_BUTTON_HEIGHT;
+        buttonHighlightState[i] = 0;
+    }
+    for ( int i = 0; i < SOLO_MENU_BUTTONS; i++ )
+    {
+        soloMenuButtonBox[i].x = SOLO_MENU_BUTTON_X;
+        soloMenuButtonBox[i].y = SOLO_MENU_FIRST_BUTTON_Y + (SOLO_MENU_BUTTON_HEIGHT + SOLO_BUTTON_PADDING) * i;
+        soloMenuButtonBox[i].w = SOLO_MENU_BUTTON_WIDTH;
+        soloMenuButtonBox[i].h = SOLO_MENU_BUTTON_HEIGHT;
+    }
 }

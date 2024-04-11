@@ -192,7 +192,7 @@ class Player
 
         void displayHeldTetromino();
 
-        void displayTetrominoQueue( vector<Tetromino> &Tqueue, int previewPieces = 5, int queuePosition = 0 );
+        void displayTetrominoQueue( vector<Tetromino> &Tqueue, int queuePosition = 0 );
 
         // Draw pieces on the board;
         void displayBoardCell();

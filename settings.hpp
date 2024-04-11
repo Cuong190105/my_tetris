@@ -24,7 +24,7 @@ enum keyFunc
 };
 
 enum cfg { RESOLUTION, BGM_VOLUME, SFX_VOLUME, SHOW_GHOST, NEXT_BOXES, PLAYFIELD_SCALE, NUM_CFG };
-extern const int LENGTH_UNIT;
+extern int LENGTH_UNIT;
 extern const string CONFIG_FILE;
 extern int heightDimension;
 extern int bgmVolume;
@@ -33,6 +33,10 @@ extern bool showGhost;
 extern double playfieldScale;
 extern int nextBoxes;
 extern int keyScanCode[NUM_KEY_FUNCTIONS];
+extern int maxHeight;
+extern const int HEIGHT_ALLOWED[];
+
+void validateConfig();
 
 int extractNum( string line );
 
