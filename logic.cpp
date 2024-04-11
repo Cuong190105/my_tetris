@@ -113,6 +113,9 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                 }
                 else if ( scene != PAUSE )
                 {
+                    
+                    TTF_SetFontSize( fontBold, TILE_WIDTH * 3 / 4 );
+                    TTF_SetFontSize( fontRegular, TILE_WIDTH * 3 / 4 );
                     generateTetromino( Tqueue );
                     player.ingameProgress( Tqueue, isDrawn, scene );
                     if ( isDrawn ) {
@@ -149,7 +152,7 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                             break;
                         }
                         case MYSTERY:
-                            if ( player.getLine() / 10 + 1 > player.getLevel() ) player.setLevel( player.getLevel() + 1 );
+                            if ( player.getLevel() < 15 && player.getLine() / 10 + 1 > player.getLevel() ) player.setLevel( player.getLevel() + 1 );
                             const string eventName[] = {"UPSIDE DOWN", "UNSTABLE", "BOMB", "GIANT", "GARBAGE", "CORRUPTED", "HORIZONTAL SHIFT"};
                             if (player.getMysteryEvent() > -1 && SDL_GetTicks() - player.getMysteryMark() < 3000)
                             {
@@ -166,10 +169,17 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                     if ( player.getMysteryEvent() == UPSIDE_DOWN ) SDL_RenderCopyEx( renderer, foreground, NULL, NULL, 180, NULL, SDL_FLIP_NONE );
                     else SDL_RenderCopy( renderer, foreground, NULL, NULL );
                     if ( scene == PAUSE ) { pauseMark = SDL_GetTicks(); pauseMusic(); }
+                    TTF_SetFontSize( fontBold, LENGTH_UNIT );
+                    TTF_SetFontSize( fontRegular, LENGTH_UNIT );
                 }
                 else
                 {
+                    
+                    TTF_SetFontSize( fontBold, TILE_WIDTH * 3 / 4 );
+                    TTF_SetFontSize( fontRegular, TILE_WIDTH * 3 / 4 );
                     renderStatistics( player, startMark + SDL_GetTicks() - pauseMark, gameMode == TIME ? mod[TIME] : 0, mod[LINECAP] );
+                    TTF_SetFontSize( fontBold, LENGTH_UNIT );
+                    TTF_SetFontSize( fontRegular, LENGTH_UNIT );
                     player.displayHeldTetromino();
                     player.displayBoard();
                     player.displayCurrentTetromino();
@@ -229,7 +239,12 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                 {
                     clearScreen();
                     bgImage.render();
+                    
+                    TTF_SetFontSize( fontBold, TILE_WIDTH * 3 / 4 );
+                    TTF_SetFontSize( fontRegular, TILE_WIDTH * 3 / 4 );
                     SDL_SetRenderTarget( renderer, foreground );
+                    TTF_SetFontSize( fontBold, LENGTH_UNIT );
+                    TTF_SetFontSize( fontRegular, LENGTH_UNIT );
                     clearScreen();
                     player.displayBoard();
                     player.displayTetrominoQueue( Tqueue );
@@ -436,7 +451,7 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
 {
     loadMenuElements();
     Texture title;
-    title.loadFromFile("src/media/img/game_title.png");
+    title.loadFromFile(GAME_TITLE);
     int activeButton = -1;
     int mouse_x, mouse_y;
     SDL_Event event;
@@ -448,7 +463,11 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
     const int ANIMATION_DURATION = 500;
     while ( scene != INGAME && scene != QUIT )
     {
-        clearScreen();;
+        SDL_GetMouseState( &mouse_x, &mouse_y );
+        bool backActive = false, startActive = false;
+
+        //Renders Screen & Gets button states ( anyActive = Active )
+        clearScreen();
         renderMenuBackground();
         generateTetromino( floating );
         renderFloatingTetromino( floating );
@@ -458,8 +477,6 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
         SDL_SetTextureBlendMode( foreground, SDL_BLENDMODE_BLEND );
         SDL_SetRenderDrawColor( renderer, 0, 0, 0, 0 );
         SDL_RenderClear( renderer );
-        SDL_GetMouseState( &mouse_x, &mouse_y );
-        bool backActive = false, startActive = false;
         switch( scene )
         {
             case MAIN_MENU:
@@ -477,8 +494,8 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
                 break;
 
             case SETTINGS:
-                gameSettings( scene, activeButton, adjusted );
                 backActive = handleBackButton( mouse_x, mouse_y );
+                gameSettings( scene, activeButton, adjusted, mouse_x, mouse_y );
                 break;
             case MULTI_MENU:
                 renderText( "Under Construction", WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, true, CENTER, MIDDLE, 3, SDL_Color {255, 255, 255} );
@@ -489,33 +506,7 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
         }
         SDL_SetRenderTarget( renderer, NULL );
 
-        if ( changeMenu != QUIT )
-        {
-            if ( scene != changeMenu )
-            {
-                if ( SDL_GetTicks() - animationMark > ANIMATION_DURATION / 60 )
-                {
-                    foregroundAlphaMod --;
-                    if ( foregroundAlphaMod == 0 )
-                    {
-                        scene = changeMenu;
-                    }
-                    animationMark = SDL_GetTicks();
-                }
-            }
-            else if ( foregroundAlphaMod < 10 && SDL_GetTicks() - animationMark > ANIMATION_DURATION / 60 )
-            {
-                animationMark = SDL_GetTicks();
-                foregroundAlphaMod ++;
-            }
-            if (foregroundAlphaMod < 10) SDL_SetTextureAlphaMod( foreground, 255 * foregroundAlphaMod / 10 );
-        } else scene = QUIT;
-
-        SDL_RenderCopy( renderer, foreground, NULL, NULL );
-        SDL_DestroyTexture( foreground );
-        foreground = NULL;
-        if ( transIn ) renderTransition( transIn );
-        SDL_RenderPresent( renderer );
+        //Handles mouse events
         while ( SDL_PollEvent( &event ) > 0 )
         {
             if ( event.type == SDL_QUIT ) {scene = QUIT; break;}
@@ -554,7 +545,7 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
                             // gameHandler( false, activeButton );
                             // break;
                         case SETTINGS:
-                            if ( backActive ) { changeMenu = MAIN_MENU; playSfx( SELECT ); }
+                            if ( backActive ) { changeMenu = MAIN_MENU; adjusted = INITIAL; activeButton = 0; playSfx( SELECT ); }
                             else if ( activeButton != 0 ) { adjusted = RELEASED; playSfx( SELECT ); }
                             break;
                         case QUIT:
@@ -567,7 +558,37 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
                 }
             }
         }
-        
+
+        //Plays transition if necessary
+        if ( changeMenu != QUIT )
+        {
+            if ( scene != changeMenu )
+            {
+                if ( SDL_GetTicks() - animationMark > ANIMATION_DURATION / 60 )
+                {
+                    foregroundAlphaMod --;
+                    if ( foregroundAlphaMod == 0 )
+                    {
+                        scene = changeMenu;
+                        adjusted = INITIAL;
+                        activeButton = 0;
+                    }
+                    animationMark = SDL_GetTicks();
+                }
+            }
+            else if ( foregroundAlphaMod < 10 && SDL_GetTicks() - animationMark > ANIMATION_DURATION / 60 )
+            {
+                animationMark = SDL_GetTicks();
+                foregroundAlphaMod ++;
+            }
+            if (foregroundAlphaMod < 10) SDL_SetTextureAlphaMod( foreground, 255 * foregroundAlphaMod / 10 );
+        } else scene = QUIT;
+
+        SDL_RenderCopy( renderer, foreground, NULL, NULL );
+        SDL_DestroyTexture( foreground );
+        foreground = NULL;
+        if ( transIn ) renderTransition( transIn );
+        SDL_RenderPresent( renderer );
     }
     stopMusic( true );
     while ( scene != QUIT && !transIn ) {
@@ -582,9 +603,9 @@ int adjustmentSlider( int level, int x, int y, bool isHolding )
     const int SLIDER_UNIT = LENGTH_UNIT / 10;
     SDL_GetMouseState( &mouse_x, &mouse_y );
     Texture slider;
-    const string SLIDER_BG = "src/media/img/bg_slider.png";
-    const string SLIDER_FG = "src/media/img/fg_slider.png";
-    const string SLIDER_HEAD = "src/media/img/slider_head.png";
+    // const string SLIDER_BG = "src/media/img/bg_slider.png";
+    // const string SLIDER_FG = "src/media/img/fg_slider.png";
+    // const string SLIDER_HEAD = "src/media/img/slider_head.png";
     slider.loadFromFile(SLIDER_BG);
     slider.render( x - LENGTH_UNIT * 5, y - LENGTH_UNIT / 4, LENGTH_UNIT * 10, LENGTH_UNIT / 2 );
     slider.loadFromFile(SLIDER_FG);
@@ -605,24 +626,48 @@ int adjustmentSlider( int level, int x, int y, bool isHolding )
     return val;
 }
 
-void gameSettings( int &scene, int &activeButton, int &adjusted )
+void gameSettings( int &scene, int &activeButton, int &adjusted, int mouse_x, int mouse_y )
 {
     enum category { RESOLUTION, BGM, SFX, PLAYFIELD_ELEMENT_SIZE, NEXT_BOX };
     int maxHeightOption = 5;
     for (int i = 0; i < 5; i++) if ( HEIGHT_ALLOWED[i + 1] > maxHeight ) {maxHeightOption = i; break;}
     if ( scene == SETTINGS )
     {
-        enum settingPage { GENERAL, KEYBINDING };
+        bool anyActive = false;
+        enum settingPage { GENERAL = 100, CONTROL };
         static int page = GENERAL;
-        renderText( "SETTINGS" , LENGTH_UNIT * 6, LENGTH_UNIT * 4, false, LEFT, MIDDLE, 3, SDL_Color {255, 255, 255} );
+        renderText( "SETTINGS" , LENGTH_UNIT * 6, LENGTH_UNIT * 4, true, LEFT, MIDDLE, 3, SDL_Color {255, 255, 255} );
         SDL_Rect rect { LENGTH_UNIT * 14, LENGTH_UNIT * 8, LENGTH_UNIT * 36, LENGTH_UNIT * 24 };
         SDL_SetRenderDrawColor( renderer, 0, 0, 0, 225 );
         SDL_RenderFillRect( renderer, &rect );
+
+        if (  mouse_y >= LENGTH_UNIT * 9 && mouse_y <= LENGTH_UNIT * 11 )
+        {
+            if ( mouse_x >= LENGTH_UNIT * 23 && mouse_x <= LENGTH_UNIT * 29 ) {activeButton = GENERAL; anyActive = true;}
+            else if ( mouse_x >= LENGTH_UNIT * 35 && mouse_x <= LENGTH_UNIT * 41 ) {activeButton = CONTROL; anyActive = true;}
+        }
+
+        if ( adjusted == RELEASED && anyActive == true )
+        {
+            page = activeButton;
+            activeButton = 0;
+            adjusted = INITIAL;
+        }
 
         switch(page)
         {
             case GENERAL:
             {
+                renderText( "GENERAL", LENGTH_UNIT * 26, LENGTH_UNIT * 10, true, CENTER, MIDDLE, 1.5 );
+                renderText( "CONTROL", LENGTH_UNIT * 38, LENGTH_UNIT * 10, true, CENTER, MIDDLE, 1.5, SDL_Color {50, 50, 50} );
+                Texture underlineBar;
+                underlineBar.loadFromFile(SLIDER_FG);
+                int w, h;
+                TTF_SizeText( fontBold, "GENERAL", &w, &h );
+                int x = LENGTH_UNIT * 26 - w / 2, y = LENGTH_UNIT * 10 + h;
+                h = LENGTH_UNIT / 5;
+                underlineBar.render( x, y, w, h );
+
                 static int activeSlider = -1;
                 if (adjusted == RELEASED)
                 {
@@ -646,19 +691,21 @@ void gameSettings( int &scene, int &activeButton, int &adjusted )
                     }
                     activeButton = 0;
                 }
+                
                 int tmpSlider = -1, tmpButton = 0;
-                renderText( "RESOLUTION" , LENGTH_UNIT * 16, LENGTH_UNIT * 12, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );
-                renderText( to_string(heightDimension * 16 / 9) + "x" + to_string(heightDimension), LENGTH_UNIT * 42, LENGTH_UNIT * 12, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
-                tmpButton = adjustmentButton( LENGTH_UNIT * 42, LENGTH_UNIT * 12, heightDimension == HEIGHT_ALLOWED[0], heightDimension == HEIGHT_ALLOWED[maxHeightOption] ) * (RESOLUTION + 1);
+                renderText( "RESOLUTION" , LENGTH_UNIT * 16, LENGTH_UNIT * 14, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                renderText( to_string(heightDimension * 16 / 9) + "x" + to_string(heightDimension), LENGTH_UNIT * 42, LENGTH_UNIT * 14, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                tmpButton = adjustmentButton( LENGTH_UNIT * 42, LENGTH_UNIT * 14, heightDimension == HEIGHT_ALLOWED[0], heightDimension == HEIGHT_ALLOWED[maxHeightOption] ) * (RESOLUTION + 1);
                 if ( tmpButton != 0 && activeSlider == -1 )
                 {
                     activeButton = tmpButton;
                     tmpButton = 0;
+                    anyActive = true;
                 }
 
-                renderText( "BACKGROUND MUSIC" , LENGTH_UNIT * 16, LENGTH_UNIT * 15, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );
-                renderText( to_string( bgmVolume ), LENGTH_UNIT * 48, LENGTH_UNIT * 15, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
-                tmpSlider = adjustmentSlider( bgmVolume, LENGTH_UNIT * 40, LENGTH_UNIT * 15, activeSlider == BGM_VOLUME && activeSlider != -1 );
+                renderText( "BACKGROUND MUSIC" , LENGTH_UNIT * 16, LENGTH_UNIT * 17, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                renderText( to_string( bgmVolume ), LENGTH_UNIT * 48, LENGTH_UNIT * 17, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                tmpSlider = adjustmentSlider( bgmVolume, LENGTH_UNIT * 40, LENGTH_UNIT * 17, activeSlider == BGM_VOLUME && activeSlider != -1 );
                 if ( tmpSlider != -1 && (activeSlider == -1 || activeSlider == BGM_VOLUME)  )
                 {
                     activeButton = BGM_VOLUME + 1;
@@ -669,11 +716,12 @@ void gameSettings( int &scene, int &activeButton, int &adjusted )
                         applySettings(BGM_VOLUME);
                     }
                     tmpSlider = -1;
+                    anyActive = true;
                 }
                 
-                renderText( "SFX" , LENGTH_UNIT * 16, LENGTH_UNIT * 18, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );
-                renderText( to_string( sfxVolume ), LENGTH_UNIT * 48, LENGTH_UNIT * 18, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
-                tmpSlider = adjustmentSlider( sfxVolume, LENGTH_UNIT * 40, LENGTH_UNIT * 18, activeSlider == SFX_VOLUME && activeSlider != -1 );
+                renderText( "SFX" , LENGTH_UNIT * 16, LENGTH_UNIT * 20, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                renderText( to_string( sfxVolume ), LENGTH_UNIT * 48, LENGTH_UNIT * 20, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                tmpSlider = adjustmentSlider( sfxVolume, LENGTH_UNIT * 40, LENGTH_UNIT * 20, activeSlider == SFX_VOLUME && activeSlider != -1 );
                 if ( tmpSlider != -1 && (activeSlider == -1 || activeSlider == SFX_VOLUME) )
                 {
                     activeButton = SFX_VOLUME + 1;
@@ -684,11 +732,12 @@ void gameSettings( int &scene, int &activeButton, int &adjusted )
                         applySettings(SFX_VOLUME);
                     }
                     tmpSlider = -1;
+                    anyActive = true;
                 }
 
-                renderText( "SCALE PLAYFIELD ELEMENTS" , LENGTH_UNIT * 16, LENGTH_UNIT * 21, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );
-                renderText( to_string( (int)(playfieldScale * 100) ) + "%", LENGTH_UNIT * 48, LENGTH_UNIT * 21, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
-                tmpSlider = adjustmentSlider( (playfieldScale - 0.5) / 0.0084, LENGTH_UNIT * 40, LENGTH_UNIT * 21, activeSlider == PLAYFIELD_SCALE && activeSlider != -1 );
+                renderText( "SCALE PLAYFIELD ELEMENTS" , LENGTH_UNIT * 16, LENGTH_UNIT * 23, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                renderText( to_string( (int)(playfieldScale * 100) ) + "%", LENGTH_UNIT * 48, LENGTH_UNIT * 23, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                tmpSlider = adjustmentSlider( (playfieldScale - 0.5) / 0.0084, LENGTH_UNIT * 40, LENGTH_UNIT * 23, activeSlider == PLAYFIELD_SCALE && activeSlider != -1 );
                 if ( tmpSlider != -1 && (activeSlider == -1 || activeSlider == PLAYFIELD_SCALE) )
                 {
                     activeButton = PLAYFIELD_SCALE + 1;
@@ -696,37 +745,109 @@ void gameSettings( int &scene, int &activeButton, int &adjusted )
                     {
                         playfieldScale = 0.5 + 0.0084 * tmpSlider;
                         activeSlider = PLAYFIELD_SCALE;
-                        applySettings(SFX_VOLUME);
+                        applySettings(PLAYFIELD_SCALE);
                     }
                     tmpSlider = -1;
+                    anyActive = true;
                 }
                 
-                renderText( "SHOW GHOST" , LENGTH_UNIT * 16, LENGTH_UNIT * 24, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );
-                renderText( (showGhost ? "ENABLED" : "DISABLED" ), LENGTH_UNIT * 42, LENGTH_UNIT * 24, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
-                tmpButton = adjustmentButton( LENGTH_UNIT * 42, LENGTH_UNIT * 24, showGhost == 0, showGhost == 1 ) * (SHOW_GHOST + 1);
+                renderText( "SHOW GHOST" , LENGTH_UNIT * 16, LENGTH_UNIT * 26, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                renderText( (showGhost ? "ENABLED" : "DISABLED" ), LENGTH_UNIT * 42, LENGTH_UNIT * 26, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                tmpButton = adjustmentButton( LENGTH_UNIT * 42, LENGTH_UNIT * 26, showGhost == 0, showGhost == 1 ) * (SHOW_GHOST + 1);
                 if ( tmpButton != 0 && activeSlider == -1 )
                 {
                     activeButton = tmpButton;
                     tmpButton = 0;
+                    anyActive = true;
                 }
                 
-                renderText( "NUMBER OF NEXT BOXES" , LENGTH_UNIT * 16, LENGTH_UNIT * 27, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );
-                renderText( to_string( nextBoxes ), LENGTH_UNIT * 42, LENGTH_UNIT * 27, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
-                tmpButton = adjustmentButton( LENGTH_UNIT * 42, LENGTH_UNIT * 27, nextBoxes == 1, nextBoxes == 5 ) * (NEXT_BOXES + 1);
+                renderText( "NUMBER OF NEXT BOXES" , LENGTH_UNIT * 16, LENGTH_UNIT * 29, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                renderText( to_string( nextBoxes ), LENGTH_UNIT * 42, LENGTH_UNIT * 29, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                tmpButton = adjustmentButton( LENGTH_UNIT * 42, LENGTH_UNIT * 29, nextBoxes == 1, nextBoxes == 5 ) * (NEXT_BOXES + 1);
                 if ( tmpButton != 0 && activeSlider == -1 )
                 {
                     activeButton = tmpButton;
                     tmpButton = 0;
+                    anyActive = true;
                 }
+                break;
             }
-            break;
-            case KEYBINDING:
+            case CONTROL:
             {
+                bool keybindScreen = false;
 
+                renderText( "CONTROL", LENGTH_UNIT * 38, LENGTH_UNIT * 10, true, CENTER, MIDDLE, 1.5 );
+                renderText( "GENERAL", LENGTH_UNIT * 26, LENGTH_UNIT * 10, true, CENTER, MIDDLE, 1.5, SDL_Color {50, 50, 50} );
+                Texture underlineBar;
+                underlineBar.loadFromFile(SLIDER_FG);
+                int w, h;
+                TTF_SizeText( fontBold, "CONTROL", &w, &h );
+                int x = LENGTH_UNIT * 38 - w / 2, y = LENGTH_UNIT * 10 + h;
+                h = LENGTH_UNIT / 5;
+                underlineBar.render( x, y, w, h );
+
+                renderText( "MOVE LEFT" , LENGTH_UNIT * 16, LENGTH_UNIT * 14, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );                
+                renderText( "MOVE RIGHT" , LENGTH_UNIT * 16, LENGTH_UNIT * 16, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );                
+                renderText( "SOFT DROP" , LENGTH_UNIT * 16, LENGTH_UNIT * 18, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );                
+                renderText( "HARD DROP" , LENGTH_UNIT * 16, LENGTH_UNIT * 20, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );                
+                renderText( "SWAP HOLD" , LENGTH_UNIT * 16, LENGTH_UNIT * 22, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );                
+                renderText( "ROTATE CLOCKWISE" , LENGTH_UNIT * 16, LENGTH_UNIT * 24, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );                
+                renderText( "ROTATE COUNTERCLOCKWISE" , LENGTH_UNIT * 16, LENGTH_UNIT * 26, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );
+
+                int mouse_x, mouse_y;
+                SDL_GetMouseState( &mouse_x, &mouse_y );
+                for (int i = 0; i < NUM_KEY_FUNCTIONS; i++)
+                {
+                    if (handleKeybindButton(keyScanCode[i] != 0 ? string(SDL_GetKeyName( SDL_GetKeyFromScancode( keyScanCode[i]) )) : "-",
+                                            mouse_x, mouse_y, LENGTH_UNIT * (40 + 4 * ( i & 1 ) ), LENGTH_UNIT * (14 + i / 2 * 2),
+                                            LENGTH_UNIT * 3, LENGTH_UNIT, {150, 150, 150} ))
+                    {
+                        activeButton = i + 1;
+                        anyActive = true;
+                    }
+                }
+                if ( adjusted == RELEASED && activeButton > 0 )
+                {
+                    adjusted = INITIAL;
+                    keybindScreen = true;
+                }
+                cout << activeButton << endl;
+                while ( keybindScreen == true )
+                {
+                    SDL_SetRenderTarget( renderer, NULL );
+                    clearScreen();
+                    SDL_Rect background { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
+                    SDL_SetRenderDrawColor( renderer, 0, 0, 0, 255 );
+                    SDL_RenderFillRect( renderer, &background );
+                    renderText( "PRESS A KEY TO BIND", WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, true, CENTER, MIDDLE, 4 );
+                    renderText( "CLICK ANYWHERE TO REMOVE KEYBIND", WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2 + LENGTH_UNIT * 4, true, CENTER, MIDDLE, 2 );
+                    SDL_RenderPresent( renderer );
+
+                    SDL_Event catchKey;
+                    while (SDL_PollEvent(&catchKey))
+                    {
+                        if ( catchKey.type == SDL_QUIT ) { scene = QUIT; keybindScreen = false; break; }
+                        else if ( catchKey.type == SDL_KEYDOWN)
+                        {
+                            keyScanCode[activeButton - 1] = catchKey.key.keysym.scancode;
+                            activeButton = 0;
+                            keybindScreen = false;
+                            break;
+                        }
+                        else if ( catchKey.type == SDL_MOUSEBUTTONUP )
+                        {
+                            keyScanCode[activeButton - 1] = SDL_SCANCODE_UNKNOWN;
+                            activeButton = 0;
+                            keybindScreen = false;
+                            break;
+                        }
+                    }
+                }
+                // renderText( to_string( nextBoxes ), LENGTH_UNIT * 42, LENGTH_UNIT * 29, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+                break;
             }
-            break;
         }
-
+        if (!anyActive) activeButton = 0;
     }
 }
 
@@ -786,4 +907,10 @@ void applySettings( int type )
         BOARD_HEIGHT = TILE_WIDTH * (HEIGHT_BY_TILE - HIDDEN_ROW);
         BOARD_WIDTH = TILE_WIDTH * WIDTH_BY_TILE;
     }
+}
+
+bool handleKeybindButton( string content, int mouse_x, int mouse_y, int x, int y, int w, int h, SDL_Color bg, SDL_Color txtColor)
+{
+    renderKeybindButton( content, x, y, w, h, bg, txtColor );
+    return (mouse_x >= x - w / 2 && mouse_x <= x + w / 2 && mouse_y >= y - h / 2 && mouse_y <= y + h / 2);
 }

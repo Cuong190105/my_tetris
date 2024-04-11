@@ -5,6 +5,16 @@
 #include <string>
 using namespace std;
 
+const string SLIDER_BG = "src/media/img/bg_slider.png";
+const string SLIDER_FG = "src/media/img/fg_slider.png";
+const string SLIDER_HEAD = "src/media/img/slider_head.png";
+const string GAME_TITLE = "src/media/img/game_title.png";
+const string MENU_BACKGROUND_PATH = "src/media/img/menu_bg.png";
+const string TILE_SPRITE_SHEET_PATH = "src/media/img/Tile_sheet.png";
+const string AUDIO_PATH = "/Tile_sheets.png";
+const char* const FONT_BOLD_PATH = "src/media/fonts/gameFontBold.ttf";
+const char* const FONT_REGULAR_PATH = "src/media/fonts/gameFontRegular.ttf";
+
 extern SDL_Renderer *renderer;
 extern TTF_Font *fontBold;
 extern TTF_Font *fontRegular;

@@ -20,7 +20,6 @@ void close();
 
 int main(int argv, char **args) {
     //Initialize SDL & Create window
-
     if ( !init() ) {
         cout << "Failed to initialize" << endl;
     }
@@ -110,8 +109,7 @@ bool init()
 
 void loadMedia()
 {
-    const string TILE_SPRITE_SHEET_PATH = "src/media/img/Tile_sheet.png";
-    const string AUDIO_PATH = "/Tile_sheets.png";
+    // const string TILE_SPRITE_SHEET_PATH = "src/media/img/Tile_sheet.png";
 
     //Loads sprite sheet
     if ( !tileSpriteSheet.loadFromFile( TILE_SPRITE_SHEET_PATH ) )
@@ -141,12 +139,12 @@ void loadMedia()
 
 
     //Load font
-    fontBold = TTF_OpenFont("src/media/fonts/gameFontBold.ttf", LENGTH_UNIT);
+    fontBold = TTF_OpenFont(FONT_BOLD_PATH, LENGTH_UNIT);
     if ( fontBold == NULL )
     {
         cout << "Failed to load font." << endl;
     }
-    fontRegular = TTF_OpenFont("src/media/fonts/gameFontRegular.ttf", LENGTH_UNIT);
+    fontRegular = TTF_OpenFont(FONT_REGULAR_PATH, LENGTH_UNIT);
     if ( fontRegular == NULL )
     {
         cout << "Failed to load font." << endl;

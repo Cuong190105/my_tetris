@@ -886,28 +886,30 @@ void Player::handlingKeyPress( bool &gameOver, int &scene )
         //Handles non-repeat keys
         if ( tetr.getType() != 0 && event.type == SDL_KEYDOWN && event.key.repeat == 0 )
         {
-            switch( event.key.keysym.sym )
+            SDL_Scancode key = event.key.keysym.scancode;
+            if ( key == keyScanCode[PRIMARY_HARD_DROP] || key == keyScanCode[SECONDARY_HARD_DROP] )
             {
-                case SDLK_SPACE:
-                    if ( mode == MYSTERY && tetr.getType() == BOMB_PIECE )
-                    {
-                        lockTetromino();
-                    }
-                    else dropPiece( true );
-                    break;
-                //Rotates clockwise
-                case SDLK_UP:
-                case SDLK_x:
-                //Rotates counterclockwise
-                case SDLK_z:
-                    rotatePiece( event.key.keysym.sym != SDLK_z );
-                    break;
-                case SDLK_c:
-                    swapHoldPiece();
-                    break;
-                case SDLK_ESCAPE:
-                    scene = PAUSE;
-                    break;
+                if ( mode == MYSTERY && tetr.getType() == BOMB_PIECE )
+                {
+                    lockTetromino();
+                }
+                else dropPiece( true );
+            }
+            else if ( key == keyScanCode[PRIMARY_RIGHT_ROTATE] || key == keyScanCode[SECONDARY_RIGHT_ROTATE] )
+            {
+                rotatePiece( true );
+            }
+            else if ( key == keyScanCode[PRIMARY_LEFT_ROTATE] || key == keyScanCode[SECONDARY_LEFT_ROTATE] )
+            {
+                rotatePiece( false );
+            }
+            else if ( key == keyScanCode[PRIMARY_SWAP_HOLD] || key == keyScanCode[SECONDARY_SWAP_HOLD] )
+            {
+                swapHoldPiece();
+            }
+            else if ( key == SDL_SCANCODE_ESCAPE )
+            {
+                if ( mode <= MYSTERY ) scene = PAUSE;
             }
         }
     }
@@ -919,7 +921,7 @@ void Player::handlingKeyPress( bool &gameOver, int &scene )
     //1: Pressed once, waiting for DAS
     //2: Auto-repeat
     //3: Hold for handling input of moving in the opposite direction.
-    if ( keystate[SDL_SCANCODE_LEFT] ) 
+    if ( keystate[keyScanCode[PRIMARY_MOVE_LEFT]] || keystate[keyScanCode[SECONDARY_MOVE_LEFT]] ) 
     {
         if ( keyRepeatState[K_LEFT].first == 0 )
         {
@@ -940,7 +942,7 @@ void Player::handlingKeyPress( bool &gameOver, int &scene )
         else if ( keyRepeatState[K_LEFT].first == 3 && keyRepeatState[K_RIGHT].first == 0 ) keyRepeatState[K_LEFT].first = 2;
     } else keyRepeatState[K_LEFT].first = 0;
 
-    if ( keystate[SDL_SCANCODE_RIGHT] ) 
+    if ( keystate[keyScanCode[PRIMARY_MOVE_RIGHT]] || keystate[keyScanCode[SECONDARY_MOVE_RIGHT]] ) 
     {
         if ( keyRepeatState[K_RIGHT].first == 0 )
         {
@@ -962,7 +964,7 @@ void Player::handlingKeyPress( bool &gameOver, int &scene )
     } else keyRepeatState[K_RIGHT].first = 0;
 
     
-    if ( keystate[SDL_SCANCODE_DOWN] )
+    if ( keystate[keyScanCode[PRIMARY_SOFT_DROP]] || keystate[keyScanCode[SECONDARY_SOFT_DROP]] )
     {
         if ( keyRepeatState[K_DOWN].first == 0 || (keyRepeatState[K_DOWN].first == 2 && SDL_GetTicks() - keyRepeatState[K_DOWN].second > ARR))
         {

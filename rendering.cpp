@@ -47,15 +47,15 @@ void renderStatistics( const Player& player, Uint32 startMark, int countDownMark
     //PRIMARY_TEXT (alignment follows TITLE)
     //-----LINE_SPACING-----
 
-    // TITLE_HEIGHT = LENGTH_UNIT;
-    // LINE_SPACING = LENGTH_UNIT / 2;
+    // TITLE_HEIGHT = TILE_WIDTH;
+    // LINE_SPACING = TILE_WIDTH / 2;
 
-    const int SIDE_PADDING = LENGTH_UNIT;
-    const int BOX_HEIGHT = LENGTH_UNIT * 3;
+    const int SIDE_PADDING = TILE_WIDTH * 3 / 4;
+    const int BOX_HEIGHT = TILE_WIDTH * 3 * 3 / 4;
     const double PRIMARY_TEXT_SCALE = 3 / 2.0;
     
     //Relative position of text in textbox
-    const int PRIMARY_TEXT_Y = LENGTH_UNIT;
+    const int PRIMARY_TEXT_Y = TILE_WIDTH * 3 / 4;
     const int TITLE_Y = 0;
 
     //Textbox's left/right (depends on its textbox) side
@@ -90,7 +90,6 @@ void renderStatistics( const Player& player, Uint32 startMark, int countDownMark
     time += to_string( time_in_seconds % 60 );
     renderText( "TIME", RIGHT_X, BOTTOM_Y + TITLE_Y - ( BOX_HEIGHT * 2 ), false, LEFT, TOP );
     renderText( time, RIGHT_X, BOTTOM_Y + PRIMARY_TEXT_Y - ( BOX_HEIGHT * 2 ), true, LEFT, TOP, PRIMARY_TEXT_SCALE ); 
-
 }
 
 bool displayCountdown( int x, int y, int w, int h, Uint32 startMark)
@@ -439,7 +438,7 @@ void renderAdjustmentButton( int x, int y, bool disableLeft, bool disableRight )
 void loadMenuElements()
 {
     //Loads main menu background
-    const string MENU_BACKGROUND_PATH = "src/media/img/menu_bg.png";
+    // const string MENU_BACKGROUND_PATH = "src/media/img/menu_bg.png";
     if ( !menuBackground.loadFromFile( MENU_BACKGROUND_PATH ) )
     {
         cout << "Failed to load menu background" << endl;
@@ -541,32 +540,32 @@ void Player::displayBonus()
     if ( combo > 0 )
     {
         // textTexture.setAlphaMod( time - bonusMark[0] < DURATION - FADE ? 255 : 255 - (time - bonusMark[0] - DURATION + FADE) * 255 / FADE );
-        renderText( to_string( combo ) + "x", x - LENGTH_UNIT * 6, y + LENGTH_UNIT * 6, false, RIGHT, BOTTOM, max(2 - (time - bonusMark[0]) / 500.f * 0.5f, 1.5f));
-        renderText( "COMBO", x - LENGTH_UNIT, y + LENGTH_UNIT * 6, false, RIGHT, BOTTOM, 1 );
+        renderText( to_string( combo ) + "x", x - TILE_WIDTH * 3 / 4 * 6, y + TILE_WIDTH * 3 / 4 * 6, false, RIGHT, BOTTOM, max(2 - (time - bonusMark[0]) / 500.f * 0.5f, 1.5f));
+        renderText( "COMBO", x - TILE_WIDTH * 3 / 4, y + TILE_WIDTH * 3 / 4 * 6, false, RIGHT, BOTTOM, 1 );
     }
     if ( bonus & T_SPIN )
     {
         // textTexture.setAlphaMod( time - bonusMark[1] < 1500 ? 255 : 255 - (time - bonusMark[1] - DURATION + FADE) * 255 / FADE );
-        renderText( "T-SPIN", x - LENGTH_UNIT, y + LENGTH_UNIT * 9, false, RIGHT, BOTTOM, 2, {245, 66, 239} );
-        if ( bonus & MINI ) renderText( "Mini", x - LENGTH_UNIT * 8, y + LENGTH_UNIT * 9, false, RIGHT, BOTTOM, 2, {245, 66, 239} );
+        renderText( "T-SPIN", x - TILE_WIDTH * 3 / 4, y + TILE_WIDTH * 3 / 4 * 9, false, RIGHT, BOTTOM, 2, {245, 66, 239} );
+        if ( bonus & MINI ) renderText( "Mini", x - TILE_WIDTH * 3 / 4 * 8, y + TILE_WIDTH * 3 / 4 * 9, false, RIGHT, BOTTOM, 2, {245, 66, 239} );
         if ( time - bonusMark[1] > DURATION ) { bonus -= T_SPIN; if ( bonus & MINI ) bonus -= MINI; }
     }
     if ( bonus & TETRIS )
     {
         // textTexture.setAlphaMod( time - bonusMark[1] < 1500 ? 255 : 255 - (time - bonusMark[1] - DURATION + FADE) * 255 / FADE );
-        renderText( "TETRIS", x - LENGTH_UNIT, y + LENGTH_UNIT * 9, false, RIGHT, BOTTOM, 2, {66, 218, 245} );
+        renderText( "TETRIS", x - TILE_WIDTH * 3 / 4, y + TILE_WIDTH * 3 / 4 * 9, false, RIGHT, BOTTOM, 2, {66, 218, 245} );
         if ( time - bonusMark[1] > DURATION ) bonus -= TETRIS;
     }
     if ( (bonus & B2B == B2B) && b2b > 0 )
     {
         // textTexture.setAlphaMod( time - bonusMark[1] < 1500 ? 255 : 255 - (time - bonusMark[1] - DURATION + FADE) * 255 / FADE );
-        renderText( "BACK-TO-BACK", x - LENGTH_UNIT, y + LENGTH_UNIT * 11, false, RIGHT, BOTTOM, 1 );
+        renderText( "BACK-TO-BACK", x - TILE_WIDTH * 3 / 4, y + TILE_WIDTH * 3 / 4 * 11, false, RIGHT, BOTTOM, 1 );
         if ( time - bonusMark[1] > DURATION ) bonus -= B2B;
     }
     if ( bonus & ALLCLEAR )
     {
         // textTexture.setAlphaMod( time - bonusMark[2] < 1500 ? 255 : 255 - (time - bonusMark[2] - DURATION + FADE) * 255 / FADE );
-        renderText( "ALL CLEAR", x - LENGTH_UNIT, y + LENGTH_UNIT * 13, false, RIGHT, BOTTOM );
+        renderText( "ALL CLEAR", x - TILE_WIDTH * 3 / 4, y + TILE_WIDTH * 3 / 4 * 13, false, RIGHT, BOTTOM );
         if ( time - bonusMark[2] > DURATION ) bonus -= ALLCLEAR;
     }
     // textTexture.setAlphaMod( 255 );
@@ -601,4 +600,14 @@ void changeDimensions()
         soloMenuButtonBox[i].w = SOLO_MENU_BUTTON_WIDTH;
         soloMenuButtonBox[i].h = SOLO_MENU_BUTTON_HEIGHT;
     }
+}
+
+void renderKeybindButton( string content, int x, int y, int w, int h, SDL_Color bg, SDL_Color txtColor )
+{
+    SDL_Rect background { x - w / 2, y - h / 2, w, h };
+    SDL_SetRenderDrawColor( renderer, bg.r, bg.g, bg.b, bg.a );
+
+    SDL_RenderFillRect( renderer, &background );
+    renderText( content, x, y, false, CENTER, MIDDLE, h * 1.f / LENGTH_UNIT, txtColor );
+    
 }

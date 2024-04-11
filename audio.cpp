@@ -37,7 +37,6 @@ void loadSfx()
 void playSfx(int fx)
 {
     Mix_PlayChannel(-1, sfx[fx], 0);
-    Mix_Volume( -1, MIX_MAX_VOLUME * sfxVolume / 100 );
 }
 
 void stopMusic( bool fade )

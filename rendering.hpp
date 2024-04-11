@@ -85,4 +85,6 @@ int renderRetryScreen( bool &retryLoop, int &scene );
 
 void changeDimensions();
 
+void renderKeybindButton( string content, int x, int y, int w, int h, SDL_Color bg, SDL_Color txtColor );
+
 #endif

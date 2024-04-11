@@ -6,12 +6,6 @@
 using namespace std;
 enum keyFunc
 {
-    PRIMARY_LEFT_ROTATE,
-    SECONDARY_LEFT_ROTATE,
-    PRIMARY_RIGHT_ROTATE,
-    SECONDARY_RIGHT_ROTATE,
-    PRIMARY_SWAP_HOLD,
-    SECONDARY_SWAP_HOLD,
     PRIMARY_MOVE_LEFT,
     SECONDARY_MOVE_LEFT,
     PRIMARY_MOVE_RIGHT,
@@ -20,6 +14,12 @@ enum keyFunc
     SECONDARY_SOFT_DROP,
     PRIMARY_HARD_DROP,
     SECONDARY_HARD_DROP,
+    PRIMARY_SWAP_HOLD,
+    SECONDARY_SWAP_HOLD,
+    PRIMARY_LEFT_ROTATE,
+    SECONDARY_LEFT_ROTATE,
+    PRIMARY_RIGHT_ROTATE,
+    SECONDARY_RIGHT_ROTATE,
     NUM_KEY_FUNCTIONS,
 };
 
@@ -32,7 +32,7 @@ extern int sfxVolume;
 extern bool showGhost;
 extern double playfieldScale;
 extern int nextBoxes;
-extern int keyScanCode[NUM_KEY_FUNCTIONS];
+extern SDL_Scancode keyScanCode[NUM_KEY_FUNCTIONS];
 extern int maxHeight;
 extern const int HEIGHT_ALLOWED[];
 

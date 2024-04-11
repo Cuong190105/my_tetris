@@ -15,9 +15,9 @@ void taskManager();
 
 void menuManager( int &scene, bool &transIn, int &players, int &gameMode, int mod[4] );
 
-void gameSettings( int &scene, int &activeButton, int &adjusted  );
+void gameSettings( int &scene, int &activeButton, int &adjusted, int mouse_x, int mouse_y );
 
-void pause();
+bool handleKeybindButton( string content, int mouse_x, int mouse_y, int x, int y, int w, int h, SDL_Color bg = { 0, 0, 0 }, SDL_Color txtColor = { 255, 255, 255 });
 
 //Applies loaded settings
 void applySettings( int type = -1 );
