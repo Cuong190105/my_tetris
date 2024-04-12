@@ -5,6 +5,8 @@
 
 using namespace std;
 
+enum MBState { PRESSED = -1, INITIAL, RELEASED };
+
 void generateTetromino( vector<Tetromino> &Tqueue )
 {
     //7-bag randomization (Takes all 7 types of tetromino, shuffles them, then pushes them into the queue).
@@ -22,11 +24,8 @@ void generateTetromino( vector<Tetromino> &Tqueue )
     }
 }
 
-int handlePauseMenu()
+void handlePauseMenu( int &activeButton, int &mouse_x, int &mouse_y )
 {
-    SDL_Rect overlay { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
-    SDL_SetRenderDrawColor( renderer, 0, 0, 0, 225 );
-    SDL_RenderFillRect( renderer, &overlay );
     renderText( "GAME PAUSED", WINDOW_WIDTH / 2, LENGTH_UNIT * 8, false, CENTER, MIDDLE, 2 );
     enum PauseMenuButton { CONTINUE, RETRY, SETTINGS, QUIT };
     SDL_Rect buttons[4];
@@ -35,9 +34,6 @@ int handlePauseMenu()
     buttons[RETRY] = SDL_Rect { LENGTH_UNIT * 28, LENGTH_UNIT * 19, LENGTH_UNIT * 8, LENGTH_UNIT * 2 };
     buttons[SETTINGS] = SDL_Rect { LENGTH_UNIT * 28, LENGTH_UNIT * 22, LENGTH_UNIT * 8, LENGTH_UNIT * 2 };
     buttons[QUIT] = SDL_Rect { LENGTH_UNIT * 28, LENGTH_UNIT * 25, LENGTH_UNIT * 8, LENGTH_UNIT * 2};
-    int mouse_x, mouse_y;
-    int activeButton = -1;
-    SDL_GetMouseState( &mouse_x, &mouse_y );
     if ( mouse_x >= LENGTH_UNIT * 28 && mouse_x <= LENGTH_UNIT * 36)
     {
         for ( int i = 0; i < 4; i++ )
@@ -60,7 +56,6 @@ int handlePauseMenu()
             renderText( content[i], buttons[i].x + buttons[i].w / 2, buttons[i].y + buttons[i].h / 2, false, CENTER, MIDDLE, 1, {255, 255, 255});
         }
     }
-    return activeButton;
 }
 
 void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &transIn )
@@ -111,7 +106,7 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                         }
                     }
                 }
-                else if ( scene != PAUSE )
+                else if ( scene == INGAME )
                 {
                     
                     TTF_SetFontSize( fontBold, TILE_WIDTH * 3 / 4 );
@@ -174,7 +169,7 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                 }
                 else
                 {
-                    
+                    //Renders screen
                     TTF_SetFontSize( fontBold, TILE_WIDTH * 3 / 4 );
                     TTF_SetFontSize( fontRegular, TILE_WIDTH * 3 / 4 );
                     renderStatistics( player, startMark + SDL_GetTicks() - pauseMark, gameMode == TIME ? mod[TIME] : 0, mod[LINECAP] );
@@ -186,8 +181,26 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                     SDL_SetRenderTarget( renderer, NULL );
                     if ( gameMode == MYSTERY && player.getMysteryEvent() == UPSIDE_DOWN ) SDL_RenderCopyEx( renderer, foreground, NULL, NULL, 180, NULL, SDL_FLIP_NONE );
                     else SDL_RenderCopy( renderer, foreground, NULL, NULL );
+                    SDL_Rect overlay { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
+                    SDL_SetRenderDrawColor( renderer, 0, 0, 0, 225 );
+                    SDL_RenderFillRect( renderer, &overlay );
+
+                    //Handles events
                     SDL_Event e;
-                    int state = handlePauseMenu();
+                    static int activeButton, adjusted;
+                    int mouse_x, mouse_y;
+                    SDL_GetMouseState( &mouse_x, &mouse_y );
+                    if ( scene == PAUSE ) handlePauseMenu( activeButton, mouse_x, mouse_y );
+                    else if ( scene == INGAME_SETTINGS )
+                    {
+                        gameSettings( scene, activeButton, adjusted, mouse_x, mouse_y );
+                        if ( handleBackButton( mouse_x, mouse_y ) && activeButton == 0 )
+                        {
+                            activeButton = 100;
+                        }
+                        player.setX( (WINDOW_WIDTH - BOARD_WIDTH) / 2 );
+                        player.setY( (WINDOW_HEIGHT - BOARD_HEIGHT) / 2 );
+                    }
                     while ( SDL_PollEvent( &e ) )
                     {
                         if ( e.type == SDL_QUIT )
@@ -197,26 +210,52 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                             scene = QUIT;
                         }
                         else if ( e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE ) scene = INGAME;
-                        else if ( state != -1 && e.type == SDL_MOUSEBUTTONUP && e.button.button == SDL_BUTTON_LEFT )
+                        else if ( activeButton != -1 && e.button.button == SDL_BUTTON_LEFT )
                         {
-                            switch(state)
+                            if (  e.type == SDL_MOUSEBUTTONUP )
                             {
-                                case CONTINUE:
-                                    scene = INGAME;
-                                    break;
-                                case RETRY:
-                                    player.terminateGame();
-                                    start = false;
-                                    stopMusic( false );
-                                    scene = INGAME;
-                                    break;
-                                case QUIT_PLAY:
-                                    play = false;
-                                    player.terminateGame();
-                                    scene = SOLO_MENU;
-                                    break;
+                                if ( scene == PAUSE )
+                                {
+                                    switch(activeButton)
+                                    {
+                                        case CONTINUE:
+                                            scene = INGAME;
+                                            activeButton = -1;
+                                            break;
+                                        case RETRY:
+                                            player.terminateGame();
+                                            start = false;
+                                            stopMusic( false );
+                                            scene = INGAME;
+                                            activeButton = -1;
+                                            break;
+                                        case SETTINGS:
+                                            scene = INGAME_SETTINGS;
+                                            activeButton = -1;
+                                            break;
+                                        case QUIT_PLAY:
+                                            play = false;
+                                            player.terminateGame();
+                                            scene = SOLO_MENU;
+                                            break;
+                                    }
+                                    playSfx( SELECT );
+                                }
+                                else if ( scene == INGAME_SETTINGS )
+                                {
+                                    if ( adjusted == PRESSED || activeButton != 0 ) playSfx( SELECT );
+                                    adjusted = INITIAL;
+                                    if ( activeButton == 100 )
+                                    {
+                                        scene = PAUSE;
+                                        activeButton = -1;
+                                    }
+                                }
                             }
-                            playSfx( SELECT );
+                            else if ( scene == INGAME_SETTINGS && e.type == SDL_MOUSEBUTTONDOWN )
+                            {
+                                if ( activeButton != -1 ) {adjusted = PRESSED; playSfx( SELECT );}
+                            }
                         }
                     }
                     if ( start && scene == INGAME )
@@ -445,8 +484,6 @@ void settingRules( bool isSolo, int gameMode, int &activeButton, int &adjusted, 
     }
 }
 
-enum MBState { PRESSED = -1, INITIAL, RELEASED };
-
 void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int mod[4]  )
 {
     loadMenuElements();
@@ -493,7 +530,7 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
                 backActive = handleBackButton( mouse_x, mouse_y );
                 break;
 
-            case SETTINGS:
+            case MAIN_MENU_SETTINGS:
                 backActive = handleBackButton( mouse_x, mouse_y );
                 gameSettings( scene, activeButton, adjusted, mouse_x, mouse_y );
                 break;
@@ -544,7 +581,7 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
                         case MULTI_MENU:
                             // gameHandler( false, activeButton );
                             // break;
-                        case SETTINGS:
+                        case MAIN_MENU_SETTINGS:
                             if ( backActive ) { changeMenu = MAIN_MENU; adjusted = INITIAL; activeButton = 0; playSfx( SELECT ); }
                             else if ( activeButton != 0 ) { adjusted = RELEASED; playSfx( SELECT ); }
                             break;
@@ -554,7 +591,7 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
                 }
                 else if ( event.type == SDL_MOUSEBUTTONDOWN )
                 {
-                    if ( scene == SETTINGS && activeButton != 0 ) adjusted = PRESSED;
+                    if ( scene == MAIN_MENU_SETTINGS && activeButton != 0 ) {adjusted = PRESSED; playSfx( SELECT ); }
                 }
             }
         }
@@ -631,9 +668,10 @@ void gameSettings( int &scene, int &activeButton, int &adjusted, int mouse_x, in
     enum category { RESOLUTION, BGM, SFX, PLAYFIELD_ELEMENT_SIZE, NEXT_BOX };
     int maxHeightOption = 5;
     for (int i = 0; i < 5; i++) if ( HEIGHT_ALLOWED[i + 1] > maxHeight ) {maxHeightOption = i; break;}
-    if ( scene == SETTINGS )
+    bool anyActive = false;
+    static int activeSlider = -1;
+    if ( scene == MAIN_MENU_SETTINGS )
     {
-        bool anyActive = false;
         enum settingPage { GENERAL = 100, CONTROL };
         static int page = GENERAL;
         renderText( "SETTINGS" , LENGTH_UNIT * 6, LENGTH_UNIT * 4, true, LEFT, MIDDLE, 3, SDL_Color {255, 255, 255} );
@@ -668,7 +706,6 @@ void gameSettings( int &scene, int &activeButton, int &adjusted, int mouse_x, in
                 h = LENGTH_UNIT / 5;
                 underlineBar.render( x, y, w, h );
 
-                static int activeSlider = -1;
                 if (adjusted == RELEASED)
                 {
                     activeSlider = -1;
@@ -811,7 +848,6 @@ void gameSettings( int &scene, int &activeButton, int &adjusted, int mouse_x, in
                     adjusted = INITIAL;
                     keybindScreen = true;
                 }
-                cout << activeButton << endl;
                 while ( keybindScreen == true )
                 {
                     SDL_SetRenderTarget( renderer, NULL );
@@ -847,8 +883,61 @@ void gameSettings( int &scene, int &activeButton, int &adjusted, int mouse_x, in
                 break;
             }
         }
-        if (!anyActive) activeButton = 0;
     }
+    else if ( scene == INGAME_SETTINGS )
+    {
+        renderText( "SETTINGS" , WINDOW_WIDTH / 2, LENGTH_UNIT * 8, false, CENTER, MIDDLE, 2, SDL_Color {255, 255, 255} );
+        int tmpSlider = -1;
+        renderText( "BACKGROUND MUSIC" , LENGTH_UNIT * 16, LENGTH_UNIT * 12, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );
+        renderText( to_string( bgmVolume ), LENGTH_UNIT * 48, LENGTH_UNIT * 12, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+        tmpSlider = adjustmentSlider( bgmVolume, LENGTH_UNIT * 40, LENGTH_UNIT * 12, activeSlider == BGM_VOLUME );
+        if ( adjusted != PRESSED ) activeSlider = -1;
+        if ( tmpSlider != -1 && (activeSlider == -1 || activeSlider == BGM_VOLUME)  )
+        {
+            activeButton = BGM_VOLUME + 1;
+            if ( adjusted == PRESSED )
+            {
+                bgmVolume = tmpSlider;
+                activeSlider = BGM_VOLUME;
+                applySettings(BGM_VOLUME);
+            }
+            tmpSlider = -1;
+            anyActive = true;
+        }
+        
+        renderText( "SFX" , LENGTH_UNIT * 16, LENGTH_UNIT * 15, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );
+        renderText( to_string( sfxVolume ), LENGTH_UNIT * 48, LENGTH_UNIT * 15, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+        tmpSlider = adjustmentSlider( sfxVolume, LENGTH_UNIT * 40, LENGTH_UNIT * 15, activeSlider == SFX_VOLUME );
+        if ( tmpSlider != -1 && (activeSlider == -1 || activeSlider == SFX_VOLUME) )
+        {
+            activeButton = SFX_VOLUME + 1;
+            if ( adjusted == PRESSED )
+            {
+                sfxVolume = tmpSlider;
+                activeSlider = SFX_VOLUME;
+                applySettings(SFX_VOLUME);
+            }
+            tmpSlider = -1;
+            anyActive = true;
+        }
+
+        renderText( "SCALE PLAYFIELD ELEMENTS" , LENGTH_UNIT * 16, LENGTH_UNIT * 18, false, LEFT, MIDDLE, 1, SDL_Color {255, 255, 255} );
+        renderText( to_string( (int)(playfieldScale * 100) ) + "%", LENGTH_UNIT * 48, LENGTH_UNIT * 18, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+        tmpSlider = adjustmentSlider( (playfieldScale - 0.5) / 0.0084, LENGTH_UNIT * 40, LENGTH_UNIT * 18, activeSlider == PLAYFIELD_SCALE );
+        if ( tmpSlider != -1 && (activeSlider == -1 || activeSlider == PLAYFIELD_SCALE) )
+        {
+            activeButton = PLAYFIELD_SCALE + 1;
+            if ( adjusted == PRESSED )
+            {
+                playfieldScale = 0.5 + 0.0084 * tmpSlider;
+                activeSlider = PLAYFIELD_SCALE;
+                applySettings(PLAYFIELD_SCALE);
+            }
+            tmpSlider = -1;
+            anyActive = true;
+        }
+    }
+    if (!anyActive) activeButton = 0;
 }
 
 void taskManager()
@@ -866,7 +955,7 @@ void taskManager()
             case MAIN_MENU:
             case SOLO_MENU:
             case MULTI_MENU:
-            case SETTINGS:
+            case MAIN_MENU_SETTINGS:
                 menuManager( scene, transIn, players, gameMode, mod );
                 break;
             case INGAME:

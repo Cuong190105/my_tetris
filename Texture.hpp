@@ -60,7 +60,7 @@ class Texture
         int getHeight();
 };
 
-enum gameScene {MAIN_MENU, SOLO_MENU, MULTI_MENU, SETTINGS, QUIT, SET_RULES, INGAME, PAUSE};
+enum gameScene {MAIN_MENU, SOLO_MENU, MULTI_MENU, MAIN_MENU_SETTINGS, INGAME_SETTINGS, QUIT, SET_RULES, INGAME, PAUSE};
 extern SDL_Rect tileSpriteClips[12];
 extern Texture tileSpriteSheet;
 extern Texture textTexture;

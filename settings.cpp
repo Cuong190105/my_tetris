@@ -38,12 +38,6 @@ const string CFG_NAME[] =
     "show_ghost",
     "next_boxes",
     "playfield_element_scale",
-    "primary_left_rotate",
-    "secondary_left_rotate",
-    "primary_right_rotate",
-    "secondary_right_rotate",
-    "primary_swap_hold",
-    "secondary_swap_hold",
     "primary_move_left",
     "secondary_move_left",
     "primary_move_right",
@@ -52,6 +46,12 @@ const string CFG_NAME[] =
     "secondary_soft_drop",
     "primary_hard_drop",
     "secondary_hard_drop",
+    "primary_swap_hold",
+    "secondary_swap_hold",
+    "primary_right_rotate",
+    "secondary_right_rotate",
+    "primary_left_rotate",
+    "secondary_left_rotate",
 };
 
 double extractFloat( string line )

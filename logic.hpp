@@ -3,6 +3,8 @@
 #include "rendering.hpp"
 using namespace std;
 
+void handlePauseMenu( int &activeButton, int &mouse_x, int &mouse_y );
+
 void gameHandler( int players, int gameMode, int mod[3], int &scene, bool &transIn );
 
 void generateTetromino( vector<int> &Tqueue );
