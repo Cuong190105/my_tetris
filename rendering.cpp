@@ -38,6 +38,12 @@ void renderText( string text, int x, int y, bool isBold, int Halign, int Valign,
     textTexture.render( top_left_x, top_left_y, textTexture.getWidth() * scale, textTexture.getHeight() * scale );
 }
 
+void renderParagraph( string text, int width, int x_origin, int y_origin, bool isBold, SDL_Color color )
+{
+    textTexture.loadText( text, (isBold ? fontBold : fontRegular), color, true, width );
+    textTexture.render( x_origin, y_origin, textTexture.getWidth(), textTexture.getHeight() );
+}
+
 void renderStatistics( const Player& player, Uint32 startMark, int countDownMark, int lineTarget )
 {
     //Text box's structure:
@@ -330,6 +336,14 @@ int SOLO_MENU_BUTTON_WIDTH;
 int SOLO_BUTTON_PADDING;
 void renderSoloMenu( int mouse_x, int mouse_y, int &activeButton )
 {
+    const string modeDescription[] =
+    {
+        "A classical Tetris gameplay. Build your stack neatly, try to survive and score with speed increses over time.",
+        "Set your goal and complete it as fast as possible.",
+        "Try to get your highest score within the time limit.",
+        "A super speed game mode which pushes everything to its limit. Break your boundaries and get through the marathon challenge to prove your skills.",
+        "Survive and get 150 lines or go endless while experiencing some funny mysterious events on the go.",
+    };
     renderText( "SELECT GAME MODE", LENGTH_UNIT * 4, LENGTH_UNIT * 6, true, LEFT, BOTTOM, 3 );
     if ( mouse_x >= SOLO_MENU_BUTTON_X && mouse_x <= SOLO_MENU_BUTTON_X + SOLO_MENU_BUTTON_WIDTH )
     {
@@ -344,7 +358,6 @@ void renderSoloMenu( int mouse_x, int mouse_y, int &activeButton )
     } else activeButton = -1;
     for ( int i = 0; i < SOLO_MENU_BUTTONS; i++ )
     {
-
         if ( i == activeButton )
         {
             const int BORDER_SIZE = SOLO_BUTTON_PADDING;
@@ -357,14 +370,30 @@ void renderSoloMenu( int mouse_x, int mouse_y, int &activeButton )
             SDL_RenderFillRect( renderer, &border );
 
             SDL_SetRenderDrawColor( renderer, 0, 0, 0, 200 );
-            SDL_Rect descPanel { LENGTH_UNIT * 37, LENGTH_UNIT * 8, LENGTH_UNIT * 24, LENGTH_UNIT * 22 };
+            SDL_Rect descPanel { LENGTH_UNIT * 37, LENGTH_UNIT * 6, LENGTH_UNIT * 24, LENGTH_UNIT * 26 };
             SDL_RenderFillRect( renderer, &descPanel );
-            renderText( "DESCRIPTION", LENGTH_UNIT * 40, LENGTH_UNIT * 14, true, LEFT, BOTTOM, 3 );
-            renderText( soloGameModeName[i] + "Description", LENGTH_UNIT * 40, LENGTH_UNIT * 15, false, LEFT, TOP );
+            renderText( "DESCRIPTION", LENGTH_UNIT * 40, LENGTH_UNIT * 11, true, LEFT, BOTTOM, 3 );
+            renderParagraph( modeDescription[i], LENGTH_UNIT * 20, LENGTH_UNIT * 40, LENGTH_UNIT * 12, false );
             renderText( "HIGH SCORE", LENGTH_UNIT * 40, LENGTH_UNIT * 22, true, LEFT, BOTTOM, 3 );
             
+            enum hiscoreCategory{SCORE, LINE, TIME};
+            renderText( "SCORE", LENGTH_UNIT * 44, LENGTH_UNIT * 24, false, CENTER, MIDDLE );
+            renderText( "LINE", LENGTH_UNIT * 50, LENGTH_UNIT * 24, false, CENTER, MIDDLE );
+            renderText( "TIME", LENGTH_UNIT * 56, LENGTH_UNIT * 24, false, CENTER, MIDDLE );
             for ( int j = 1; j <= 5; j++ )
-            renderText( to_string(j) + ". 0", LENGTH_UNIT * 40, LENGTH_UNIT * (22 + j), false, LEFT, TOP );
+            {
+                renderText( to_string(j) + ".", LENGTH_UNIT * 41, LENGTH_UNIT * (24 + j), false, RIGHT, MIDDLE );
+                renderText( to_string(hiscore[i][j - 1][SCORE]), LENGTH_UNIT * 44, LENGTH_UNIT * (24 + j), false, CENTER, MIDDLE );
+                renderText( to_string(hiscore[i][j - 1][LINE]), LENGTH_UNIT * 50, LENGTH_UNIT * (24 + j), false, CENTER, MIDDLE );
+                string time = "";
+                int min = hiscore[i][j - 1][TIME] / 60000;
+                time += (min < 10 ? "0" : "") + to_string(min);
+                int sec = hiscore[i][j - 1][TIME] / 1000 % 60;
+                time +=  (sec < 10 ? ":0" : ":") + to_string(sec);
+                int msec = hiscore[i][j - 1][TIME] % 1000;
+                time += (msec < 10 ? ":00" : (msec < 100 ? ":0" : ":") ) + to_string(msec);
+                renderText( time, LENGTH_UNIT * 56, LENGTH_UNIT * (24 + j), false, CENTER, MIDDLE );
+            }
         }
         SDL_SetRenderDrawColor( renderer, 0, 0, 0, 255 );
         SDL_RenderFillRect( renderer, &soloMenuButtonBox[i] );
@@ -556,7 +585,7 @@ void Player::displayBonus()
         renderText( "TETRIS", x - TILE_WIDTH * 3 / 4, y + TILE_WIDTH * 3 / 4 * 9, false, RIGHT, BOTTOM, 2, {66, 218, 245} );
         if ( time - bonusMark[1] > DURATION ) bonus -= TETRIS;
     }
-    if ( (bonus & B2B == B2B) && b2b > 0 )
+    if ( (bonus & B2B) && b2b > 0 )
     {
         // textTexture.setAlphaMod( time - bonusMark[1] < 1500 ? 255 : 255 - (time - bonusMark[1] - DURATION + FADE) * 255 / FADE );
         renderText( "BACK-TO-BACK", x - TILE_WIDTH * 3 / 4, y + TILE_WIDTH * 3 / 4 * 11, false, RIGHT, BOTTOM, 1 );

@@ -27,6 +27,7 @@ int main(int argv, char **args) {
     {
         srand(time(NULL));
         loadMedia();
+        loadHighScore();
         taskManager();
     }
     close();

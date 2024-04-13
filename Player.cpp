@@ -440,6 +440,7 @@ void Player::updateScore( int lineCleared, int delta )
                     break;
                 default:
                     delta += 200 * lineCleared;
+                    if (lineCleared < 4 && lineCleared > 0) b2b = -1;
                     break;
             }
     }
@@ -474,7 +475,7 @@ void Player::updateScore( int lineCleared, int delta )
         }
         if ( tspinState != NO_SPIN && lineCleared ) bonus |= B2B;
         if (combo > 0) bonusMark[0] = SDL_GetTicks();
-        if ( tspinState != NO_SPIN || lineCleared == 4 ) b2b ++;
+        if ( tspinState != NO_SPIN || lineCleared >= 4 ) b2b ++;
     }
     if ( (b2b > 0 && lineCleared) || tspinState != NO_SPIN || combo > 0 ) playSfx( BONUS_POINT );
     delta = delta * ( 2 + ( b2b > 0 ) ) / 2;

@@ -1,6 +1,6 @@
 resolution=1080
 bgm_volume=0
-sfx_volume=25
+sfx_volume=42
 show_ghost=1
 next_boxes=5
 playfield_element_scale=1.3400

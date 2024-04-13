@@ -10,6 +10,7 @@ int sfxVolume = 100;
 bool showGhost = 1;
 double playfieldScale = 1;
 int nextBoxes = 5;
+vector<vector<vector<int>>> hiscore ( 5, vector<vector<int>> (5, vector<int> (3, 0 ) ));
 SDL_Scancode keyScanCode[NUM_KEY_FUNCTIONS] =
 {
     SDL_SCANCODE_LEFT,

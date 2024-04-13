@@ -21,6 +21,8 @@ extern SDL_Window *game_window;
  */
 void renderText( string text, int x, int y, bool isBold, int Halign, int Valign, double scale = 1, SDL_Color color = {255, 255, 255} );
 
+void renderParagraph( string text, int width, int x_origin, int y_origin, bool isBold = false, SDL_Color color = {255, 255, 255} );
+
 void renderStatistics( const Player& player, Uint32 startMark, int countDownMark = 0, int lineTarget = 0 );
 
 bool displayCountdown( int x, int y, int w, int h, Uint32 startMark);

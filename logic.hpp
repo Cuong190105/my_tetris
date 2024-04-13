@@ -23,4 +23,17 @@ bool handleKeybindButton( string content, int mouse_x, int mouse_y, int x, int y
 
 //Applies loaded settings
 void applySettings( int type = -1 );
+
+//===================================HIGH SCORE MANIPULATION================================
+
+const string HIGHSCORE_DIR = "hiscore.txt";
+
+//Updates high score
+void updateHighScore( int mode, int score, int line, int time );
+
+//Loads high score
+void loadHighScore();
+
+//Saves high score
+void saveHighScore();
 #endif

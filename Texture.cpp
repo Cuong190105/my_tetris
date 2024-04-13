@@ -48,10 +48,13 @@ void Texture::free()
     }
 }
 
-bool Texture::loadText( string text, TTF_Font *font, SDL_Color color )
+bool Texture::loadText( string text, TTF_Font *font, SDL_Color color, bool wrapped, Uint32 wrapWidth )
 {
 	free();
-	SDL_Surface *textSurface = TTF_RenderText_Blended(font, text.c_str(), color );
+    SDL_Surface *textSurface = NULL;
+	if (!wrapped) textSurface = TTF_RenderText_Blended(font, text.c_str(), color );
+	else textSurface = TTF_RenderText_Blended_Wrapped(font, text.c_str(), color, wrapWidth );
+
 
 	if( textSurface == NULL )
     {
@@ -76,10 +79,8 @@ bool Texture::loadText( string text, TTF_Font *font, SDL_Color color )
         //Get rid of old surface
         SDL_FreeSurface( textSurface );
     }
-    
     //Return success
     return texture != NULL;
-
 }
 
 bool Texture::loadFromFile( string path )

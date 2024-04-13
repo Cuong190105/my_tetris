@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <iostream>
+#include <sstream>
 #include <random>
 #include "logic.hpp"
 
@@ -125,7 +126,7 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                     {
                         case SPRINT:
                             // if ( player.getLine() >= mod[LINECAP] ) {player.terminateGame(); win = true;}
-                            if ( player.getLine() >= 1 ) {player.terminateGame(); win = true;}
+                            if ( player.getLine() >= mod[LINECAP] ) {player.terminateGame(); win = true;}
                             break;
                         case BLITZ:
                             if ( SDL_GetTicks() - startMark >= mod[TIME] * 60000 ) {player.terminateGame();win = true;}
@@ -273,7 +274,8 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                 stopMusic( false );
                 if ( win ) playSfx(VICTORY);
                 else playSfx(GAMEOVER);
-
+                updateHighScore( gameMode, player.getScore(), player.getLine(), int(endMark - startMark) );
+                saveHighScore();
                 while ( SDL_GetTicks() - endMark <= 5000)
                 {
                     clearScreen();
@@ -319,7 +321,7 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                 }
 
                 endMark = SDL_GetTicks();
-                while ( win && SDL_GetTicks() - endMark <= 6500 )
+                while ( SDL_GetTicks() - endMark <= 6500 )
                 {
                     clearScreen();
                     bgImage.render();
@@ -591,7 +593,7 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
                 }
                 else if ( event.type == SDL_MOUSEBUTTONDOWN )
                 {
-                    if ( scene == MAIN_MENU_SETTINGS && activeButton != 0 ) {adjusted = PRESSED; playSfx( SELECT ); }
+                    if ( scene == MAIN_MENU_SETTINGS && activeButton != 0 ) adjusted = PRESSED;
                 }
             }
         }
@@ -1002,4 +1004,88 @@ bool handleKeybindButton( string content, int mouse_x, int mouse_y, int x, int y
 {
     renderKeybindButton( content, x, y, w, h, bg, txtColor );
     return (mouse_x >= x - w / 2 && mouse_x <= x + w / 2 && mouse_y >= y - h / 2 && mouse_y <= y + h / 2);
+}
+
+void updateHighScore( int mode, int score, int line, int time )
+{
+    enum result { SCORE, LINE, TIME };
+    int place = 5;
+    switch( mode )
+    {
+        //Ranks classic/master/mystery results by score
+        case CLASSIC:
+        case MASTER:
+        case MYSTERY:
+            for ( int i = 4; i > -1; i-- )
+            {
+                if ( hiscore[mode][i][SCORE] < score ) place --;
+                else if ( hiscore[mode][i][SCORE] > score  || hiscore[mode][i][LINE] < line ) break;
+                else if ( hiscore[mode][i][LINE] > line || hiscore[mode][i][TIME] > time) place --;
+                else break;
+            }
+            break;
+        //Ranks sprint results by time/line
+        case SPRINT:
+            for ( int i = 4; i > -1; i-- )
+            {
+                if (    hiscore[mode][i][LINE] == 0 || 
+                        hiscore[mode][i][TIME] / hiscore[mode][i][LINE] > time/line ||
+                        (hiscore[mode][i][TIME] / hiscore[mode][i][LINE] == time/line && (  hiscore[mode][i][LINE] < line ||
+                                                                                            (hiscore[mode][i][LINE] == line && hiscore[mode][i][score] < score)
+                                                                                         )
+                        )
+                    ) place --;
+                else break;
+            }
+            break;
+        //Ranks blitz results by score/time
+        case BLITZ:
+            for ( int i = 4; i > -1; i-- )
+            {
+                if (    hiscore[mode][i][TIME] == 0 ||
+                        hiscore[mode][i][SCORE] / hiscore[mode][i][TIME] < score/time ||
+                        hiscore[mode][i][SCORE] / hiscore[mode][i][TIME] == score/time && ( hiscore[mode][i][SCORE] > score ||
+                                                                                            (hiscore[mode][i][SCORE] == score && hiscore[mode][i][LINE] > line)
+                                                                                          )
+                   ) place --;
+                else break;
+            }
+            break;
+    }
+    if ( place < 5 )
+    {
+        vector<int> newscore = {score, line, time};
+        hiscore[mode].pop_back();
+        hiscore[mode].insert( hiscore[mode].begin() + place, newscore );
+    }
+}
+
+void loadHighScore()
+{
+    ifstream hifile(HIGHSCORE_DIR);
+    if ( hifile.is_open() )
+    {
+        for ( int i = 0; i < 5; i++ )
+            for ( int j = 0; j < 5; j++ )
+            {
+                string data;
+                getline(hifile, data);
+                istringstream ss(data);
+                for ( int k = 0; k < 3; k++ ) ss >> hiscore[i][j][k];
+            }
+        hifile.close();
+    }
+    else saveHighScore();
+}
+
+void saveHighScore()
+{
+    ofstream hifile(HIGHSCORE_DIR);
+    for ( int i = 0; i < 5; i++ )
+        for ( int j = 0; j < 5; j++ )
+        {
+            for ( int k = 0; k < 3; k++ ) hifile << hiscore[i][j][k] << " ";
+            hifile << endl;
+        }
+    hifile.close();
 }

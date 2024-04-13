@@ -34,8 +34,8 @@ class Texture
         //Manual Deallocator
         void free();
 
-        //Loads text
-        bool loadText( string text, TTF_Font *font, SDL_Color color = {255, 255, 255});
+        //Loads text 
+        bool loadText( string text, TTF_Font *font, SDL_Color color, bool wrapped = false, Uint32 wrapWidth = 0 );
 
         //Loads texture from file
         bool loadFromFile( string path );
