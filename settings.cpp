@@ -39,6 +39,7 @@ const string CFG_NAME[] =
     "show_ghost",
     "next_boxes",
     "playfield_element_scale",
+    "player_name",
     "primary_move_left",
     "secondary_move_left",
     "primary_move_right",
@@ -90,6 +91,18 @@ int extractNum( string line )
     return data;
 }
 
+string extractText( string line )
+{
+    string data = "";
+    bool equalSignPassed = false;
+    for ( int i = 0; i < line.length(); i++ )
+    {
+        if (line[i] == '=') equalSignPassed = true;
+        else if (equalSignPassed) data += line[i];
+    }
+    return data;
+}
+
 void validateConfig()
 {
     for ( int i = 0; i < 6 && HEIGHT_ALLOWED[i] <= maxHeight; i++ )
@@ -108,6 +121,8 @@ void validateConfig()
     else if ( playfieldScale > 1.34) playfieldScale = 1.34;
     if ( nextBoxes < 1) nextBoxes = 1;
     else if ( nextBoxes > 5) nextBoxes = 5;
+
+    while(playerName.length() > 16) playerName.pop_back();
 }
 
 void loadSettingsFromFile()
@@ -133,6 +148,9 @@ void loadSettingsFromFile()
 
         settings >> line;
         playfieldScale = extractFloat( line );
+
+        settings >> line;
+        playerName = extractText( line );
 
         validateConfig();
 
@@ -171,6 +189,7 @@ void saveSettings()
     settings << CFG_NAME[SHOW_GHOST] << '=' << showGhost << endl;
     settings << CFG_NAME[NEXT_BOXES] << '=' << nextBoxes << endl;
     settings << CFG_NAME[PLAYFIELD_SCALE] << '=' << fixed << setprecision(4) << playfieldScale << endl;
+    settings << CFG_NAME[PLAYER_NAME] << '=' << playerName << endl;
     for (int i = 0; i < NUM_KEY_FUNCTIONS; i++)
     {
         settings << CFG_NAME[NUM_CFG + i] << '=' << (int)keyScanCode[i] << endl;

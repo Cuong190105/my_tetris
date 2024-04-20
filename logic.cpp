@@ -92,6 +92,8 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                 player.displayTetrominoQueue( Tqueue );
                 if ( !start ) 
                 {
+                    SDL_Event catchQuit;
+                    while ( SDL_PollEvent(&catchQuit) > 0 ) if ( catchQuit.type == SDL_QUIT ) { scene = QUIT; player.terminateGame(); play = false; }
                     if ( transIn )
                     {
                         renderTransition( transIn );
@@ -210,7 +212,7 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                             player.terminateGame();
                             scene = QUIT;
                         }
-                        else if ( e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE ) scene = INGAME;
+                        else if ( e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE ) scene = PAUSE ? INGAME : PAUSE;
                         else if ( activeButton != -1 && e.button.button == SDL_BUTTON_LEFT )
                         {
                             if (  e.type == SDL_MOUSEBUTTONUP )
@@ -421,68 +423,61 @@ int adjustmentButton( int x, int y, bool disableLeft, bool disableRight )
     return 0;
 }
 
-void settingRules( bool isSolo, int gameMode, int &activeButton, int &adjusted, int mod[4] )
+void settingRules( int gameMode, int &activeButton, int &adjusted, int mod[4] )
 {
     SDL_Rect rect { LENGTH_UNIT * 12, LENGTH_UNIT * 6, LENGTH_UNIT * 40, LENGTH_UNIT * 24 };
     SDL_SetRenderDrawColor( renderer, 0, 0, 0, 225 );
     SDL_RenderFillRect( renderer, &rect);
     int mouse_x, mouse_y;
-    if ( isSolo )
+    renderText( gameModeName[gameMode], WINDOW_WIDTH / 2, LENGTH_UNIT * 12, true, CENTER, BOTTOM, 4, SDL_Color {255, 255, 255} );
+    mod[ACTIVATE_MYSTERY] = 0;
+    if ( adjusted > 0 )
     {
-        renderText( soloGameModeName[gameMode], WINDOW_WIDTH / 2, LENGTH_UNIT * 12, true, CENTER, BOTTOM, 4, SDL_Color {255, 255, 255} );
-        mod[ACTIVATE_MYSTERY] = 0;
-        if ( adjusted > 0 )
+        if ( abs(activeButton) == LINECAP + 1 )
         {
-            if ( abs(activeButton) == LINECAP + 1 )
-            {
-                if ( gameMode == MYSTERY ) mod[LINECAP] = activeButton > 0 ? -1 : 150;
-                else mod[LINECAP] +=  10 * (abs(activeButton) / activeButton);
-            }
-            else mod[abs(activeButton) - 1] +=  activeButton != 0 ? abs(activeButton) / activeButton : 0;
-            adjusted = false;
+            if ( gameMode == MYSTERY ) mod[LINECAP] = activeButton > 0 ? -1 : 150;
+            else mod[LINECAP] +=  10 * (abs(activeButton) / activeButton);
         }
-        switch( gameMode )
-        {
-            case CLASSIC:
-                renderText( "INITIAL SPEED LEVEL" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
-                renderText( to_string( mod[LEVEL] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 17, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
-                activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 17, mod[LEVEL] == 1, mod[LEVEL] == 19) * (LEVEL + 1);
-                break;
-            case SPRINT:
-                mod[LEVEL] = 1;
-                if (mod[LINECAP] < 40 || mod[LINECAP] > 100) {mod[LINECAP] = 40;}
-                renderText( "SET LINE TARGET" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
-                renderText( to_string( mod[LINECAP] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 17, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
-                activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 17, mod[LINECAP] == 40, mod[LINECAP] == 100 ) * (LINECAP + 1);
-                break;
-            case BLITZ:
-                mod[LEVEL] = 1;
-                renderText( "SET TIME LIMIT" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
-                renderText( to_string( mod[TIME] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 17, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
-                activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 17, mod[TIME] == 2, mod[TIME] == 10 ) * (TIME + 1);
-                break;
-            case MASTER:
-                renderText( "INITIAL SPEED LEVEL" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
-                renderText( "M" + to_string( mod[LEVEL] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 17, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
-                activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 17, mod[LEVEL] == 1, mod[LEVEL] == 30 ) * (LEVEL + 1);
-                break;
-            case MYSTERY:
-                mod[ACTIVATE_MYSTERY] = 1;
-                if (mod[LINECAP] != -1 && mod[LINECAP] != 150) mod[LINECAP] = 150;
-                renderText( "GO ENDLESS?" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
-                renderText( mod[LINECAP] == -1 ? "Endless" : to_string( mod[LINECAP] ) + " Lines", WINDOW_WIDTH / 2, LENGTH_UNIT * 17, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
-                activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 17, mod[LINECAP] == 150, mod[LINECAP] == -1 ) * (LINECAP + 1);
-
-                renderText( "INITIAL SPEED LEVEL" , WINDOW_WIDTH / 2, LENGTH_UNIT * 20, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
-                renderText( to_string( mod[LEVEL] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 23, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
-                int temp = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 23, mod[LEVEL] == 1, mod[LEVEL] == 15 ) * (LEVEL + 1);
-                if ( temp != 0 ) activeButton = temp;
-                break;
-        }
+        else mod[abs(activeButton) - 1] +=  activeButton != 0 ? abs(activeButton) / activeButton : 0;
+        adjusted = false;
     }
-    else
+    switch( gameMode )
     {
-        renderText( soloGameModeName[gameMode], 0, LENGTH_UNIT * 10, true, CENTER, TOP, 4, SDL_Color {255, 255, 255} );
+        case CLASSIC:
+            renderText( "INITIAL SPEED LEVEL" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+            renderText( to_string( mod[LEVEL] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 17, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+            activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 17, mod[LEVEL] == 1, mod[LEVEL] == 19) * (LEVEL + 1);
+            break;
+        case SPRINT:
+            mod[LEVEL] = 1;
+            if (mod[LINECAP] < 40 || mod[LINECAP] > 100) {mod[LINECAP] = 40;}
+            renderText( "SET LINE TARGET" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+            renderText( to_string( mod[LINECAP] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 17, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+            activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 17, mod[LINECAP] == 40, mod[LINECAP] == 100 ) * (LINECAP + 1);
+            break;
+        case BLITZ:
+            mod[LEVEL] = 1;
+            renderText( "SET TIME LIMIT" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+            renderText( to_string( mod[TIME] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 17, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+            activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 17, mod[TIME] == 2, mod[TIME] == 10 ) * (TIME + 1);
+            break;
+        case MASTER:
+            renderText( "INITIAL SPEED LEVEL" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+            renderText( "M" + to_string( mod[LEVEL] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 17, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+            activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 17, mod[LEVEL] == 1, mod[LEVEL] == 30 ) * (LEVEL + 1);
+            break;
+        case MYSTERY:
+            mod[ACTIVATE_MYSTERY] = 1;
+            if (mod[LINECAP] != -1 && mod[LINECAP] != 150) mod[LINECAP] = 150;
+            renderText( "GO ENDLESS?" , WINDOW_WIDTH / 2, LENGTH_UNIT * 14, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+            renderText( mod[LINECAP] == -1 ? "Endless" : to_string( mod[LINECAP] ) + " Lines", WINDOW_WIDTH / 2, LENGTH_UNIT * 17, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+            activeButton = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 17, mod[LINECAP] == 150, mod[LINECAP] == -1 ) * (LINECAP + 1);
+
+            renderText( "INITIAL SPEED LEVEL" , WINDOW_WIDTH / 2, LENGTH_UNIT * 20, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+            renderText( to_string( mod[LEVEL] ), WINDOW_WIDTH / 2, LENGTH_UNIT * 23, false, CENTER, MIDDLE, 1, SDL_Color {255, 255, 255} );
+            int temp = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 23, mod[LEVEL] == 1, mod[LEVEL] == 15 ) * (LEVEL + 1);
+            if ( temp != 0 ) activeButton = temp;
+            break;
     }
 }
 
@@ -498,6 +493,8 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
     vector<Tetromino> floating;
     int adjusted = 0;
     int changeMenu = scene;
+    SDL_Keycode key = 0;
+    string text = "";
     Uint32 animationMark = SDL_GetTicks();
     const int ANIMATION_DURATION = 500;
     while ( scene != INGAME && scene != QUIT )
@@ -527,7 +524,7 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
                 backActive = handleBackButton( mouse_x, mouse_y );
                 break;
             case SET_RULES:
-                settingRules( true, gameMode, activeButton, adjusted, mod );
+                settingRules( gameMode, activeButton, adjusted, mod );
                 startActive = handleStartButton( mouse_x, mouse_y, WINDOW_WIDTH / 2, LENGTH_UNIT * 26 );
                 backActive = handleBackButton( mouse_x, mouse_y );
                 break;
@@ -537,8 +534,15 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
                 gameSettings( scene, activeButton, adjusted, mouse_x, mouse_y );
                 break;
             case MULTI_MENU:
-                renderText( "Under Construction", WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, true, CENTER, MIDDLE, 3, SDL_Color {255, 255, 255} );
+            case CREATE_SERVER:
+            case JOIN_SERVER:
+            case MULTI_LOBBY:
+                // renderText( "Under Construction", WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, true, CENTER, MIDDLE, 3, SDL_Color {255, 255, 255} );
+                multiplayerManager( scene, changeMenu, mouse_x, mouse_y, activeButton, adjusted, key, text );
+                key = 0;
+                text = "";
                 backActive = handleBackButton( mouse_x, mouse_y );
+                adjusted = false;
                 break;
             default:
                 scene = QUIT;
@@ -581,20 +585,46 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
                             else if ( activeButton != 0 ) { adjusted = RELEASED; playSfx( SELECT ); }
                             else if ( startActive ) { changeMenu = INGAME; scene = changeMenu; playSfx( SELECT ); }
                         case MULTI_MENU:
-                            // gameHandler( false, activeButton );
-                            // break;
+                        case CREATE_SERVER:
+                        case JOIN_SERVER:
+                            if ( backActive ) changeMenu = (scene != MULTI_MENU) ? MULTI_MENU : MAIN_MENU;
+                            else adjusted = 1;
+                            playSfx( SELECT );
+                            break;
+                        case MULTI_LOBBY:
+                            if ( backActive )
+                            {
+                                isHost ? server.closeServer() : client.closeSocket();
+                                changeMenu = MULTI_MENU;
+                                playSfx( SELECT );
+                            }
+                            else if ( activeButton != 0 )
+                            {
+                                adjusted = true;
+                                playSfx( SELECT );
+                            }
+                            break;
                         case MAIN_MENU_SETTINGS:
                             if ( backActive ) { changeMenu = MAIN_MENU; adjusted = INITIAL; activeButton = 0; playSfx( SELECT ); }
                             else if ( activeButton != 0 ) { adjusted = RELEASED; playSfx( SELECT ); }
                             break;
                         case QUIT:
                             break;
+                        
                     }
                 }
                 else if ( event.type == SDL_MOUSEBUTTONDOWN )
                 {
                     if ( scene == MAIN_MENU_SETTINGS && activeButton != 0 ) adjusted = PRESSED;
                 }
+            }
+            else if ( event.type == SDL_TEXTINPUT )
+            {
+                text = event.text.text;
+            }
+            else if ( event.type == SDL_KEYDOWN )
+            {
+                key = event.key.keysym.sym;
             }
         }
 
@@ -944,9 +974,13 @@ void gameSettings( int &scene, int &activeButton, int &adjusted, int mouse_x, in
 
 void taskManager()
 {
-    //Current game scene
+    //Single player mod
     int mod[] = { 1, 40, 2, false };
+
+    //Number of players & current game mode
     int players, gameMode;
+
+    //Transition status
     bool transIn = true;
     int scene = MAIN_MENU;
     //Game loop
@@ -1088,4 +1122,96 @@ void saveHighScore()
             hifile << endl;
         }
     hifile.close();
+}
+
+void multiplayerManager( int scene, int &changeScene, int mouse_x, int mouse_y, int &activeButton, bool isClicked, SDL_Keycode key, string text )
+{
+    if ( playerName == "" )
+    {   
+        static bool needEdit = false;
+        if ( !needEdit )
+        {
+            needEdit = true;
+            SDL_StartTextInput();
+        }
+        bool done = renderTextInputBox( "ENTER YOUR NAME", "SET", tmpName, mouse_x, mouse_y, isClicked, key, text );
+        if ( done ) {playerName = tmpName; tmpName = ""; SDL_StopTextInput(); needEdit = false;}
+    }
+    else switch( scene )
+    {
+        case MULTI_MENU:
+            renderMultiMenu( mouse_x, mouse_y, activeButton, isClicked );
+            if ( isClicked )
+            {
+                switch( activeButton )
+                {
+                    case 0:
+                        changeScene = CREATE_SERVER ;
+                        mInfo.serverName = playerName + "'s server";
+                        mInfo.maxPlayers = 4;
+                        mInfo.gameMode = SCORE;
+                        mInfo.lvlSpd = 1;
+                        mInfo.winCount = 1;
+                        break;
+                    case 1:
+                        changeScene = JOIN_SERVER ;
+                        break;
+                    case 2:
+                        activeButton = -1;
+                        tmpName = playerName;
+                        playerName = "";
+                        break;
+                }
+            } 
+            break;
+        case CREATE_SERVER:
+        {
+            bool start = renderMatchSettings( mouse_x, mouse_y, isClicked, key, text  );
+            int status;
+            status = adjustmentButton( LENGTH_UNIT * 40, LENGTH_UNIT * 17, mInfo.maxPlayers == 2, mInfo.maxPlayers == 4 );
+            if ( isClicked ) mInfo.maxPlayers += status;
+
+            status = adjustmentButton( LENGTH_UNIT * 40, LENGTH_UNIT * 20, mInfo.gameMode == SCORE, mInfo.gameMode == MYSTERY_ATTACK );
+            if ( isClicked ) mInfo.gameMode += status;
+            
+            int limitSpd = (mInfo.gameMode == SCORE) ? 19 : (mInfo.gameMode == ATTACK ? 10 : 15);
+            if ( mInfo.lvlSpd > limitSpd ) mInfo.lvlSpd = limitSpd;
+            status = adjustmentButton( LENGTH_UNIT * 40, LENGTH_UNIT * 23, mInfo.lvlSpd == 1, mInfo.lvlSpd == limitSpd );
+            if ( isClicked ) mInfo.lvlSpd += status;
+            
+            status = adjustmentButton( LENGTH_UNIT * 40, LENGTH_UNIT * 26, mInfo.winCount == 1, mInfo.winCount == 10 );
+            if ( isClicked ) mInfo.winCount += status;
+
+            if ( isClicked && start )
+            {
+                changeScene = MULTI_LOBBY;
+                server.createServer();
+                isHost = true;
+                playerList.push_back( playerInfo {playerName, "randomShit", true} );
+            }
+        }
+            break;
+        case JOIN_SERVER:
+        {
+            static int currPage = 0;
+            static int selected = -1;
+            static bool findServer = false;
+
+            renderJoinServer( mouse_x, mouse_y, activeButton, selected, currPage, isClicked, client.address, client.serverName );
+            int totalPages = client.address.size() / 6 + ( client.address.size() % 6 == 0 ? 0 : 1);
+            if ( totalPages == 0 ) totalPages = 1;
+            renderText( "Page " + to_string( currPage + 1 ) + "/" + to_string( totalPages ), WINDOW_WIDTH / 2, LENGTH_UNIT * 27, false, CENTER, MIDDLE, 1 );
+            int changePage = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 27, currPage == 0, currPage == totalPages - 1 );
+            if ( isClicked && changePage != 0 ) {currPage += changePage; selected = -1;}
+            enum btnFn { REFRESH = 100, JOIN };
+            if ( isClicked )
+            {
+                if ( activeButton == REFRESH ) findServer = false;
+                else if ( activeButton == JOIN ) {changeScene = MULTI_LOBBY; isHost = false; }
+            }
+        }
+            break;
+        case MULTI_LOBBY:
+            renderLobby();
+    }
 }

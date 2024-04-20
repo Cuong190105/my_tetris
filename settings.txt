@@ -1,9 +1,10 @@
 resolution=1080
 bgm_volume=0
-sfx_volume=42
+sfx_volume=0
 show_ghost=1
 next_boxes=5
 playfield_element_scale=1.3400
+player_name=dlc
 primary_move_left=80
 secondary_move_left=4
 primary_move_right=79

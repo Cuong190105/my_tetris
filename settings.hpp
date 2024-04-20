@@ -4,6 +4,7 @@
 #include <SDL.h>
 #include <string>
 #include <vector>
+#include "onlan.hpp"
 using namespace std;
 enum keyFunc
 {
@@ -27,7 +28,7 @@ enum keyFunc
 //Stores high score
 extern vector<vector<vector<int>>> hiscore;
 
-enum cfg { RESOLUTION, BGM_VOLUME, SFX_VOLUME, SHOW_GHOST, NEXT_BOXES, PLAYFIELD_SCALE, NUM_CFG };
+enum cfg { RESOLUTION, BGM_VOLUME, SFX_VOLUME, SHOW_GHOST, NEXT_BOXES, PLAYFIELD_SCALE, PLAYER_NAME, NUM_CFG };
 extern int LENGTH_UNIT;
 extern const string CONFIG_FILE;
 extern int heightDimension;

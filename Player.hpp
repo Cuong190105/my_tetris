@@ -9,7 +9,7 @@ enum KeyboardFunction { K_LEFT, K_RIGHT, K_DOWN };
 class Player
 {
     private:
-        //Position and dimenstions of this player's playfield
+        //Position of this player's playfield
         int x, y;
 
         PlayBoard pb;

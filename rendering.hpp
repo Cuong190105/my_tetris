@@ -52,35 +52,81 @@ void renderMainMenuButton( int mouse_x, int mouse_y, int &activeButtons );
  */
 void renderMenuTetromino( int _x, int _y, const Tetromino &tetr );
 
+//Renders tetrominos floating on the background
+//\param floating A vector containing the floating tetrominos.
 void renderFloatingTetromino( vector<Tetromino> &floating );
 
-void renderGameTitle( Texture &title);
+//Renders game title on the main menu
+void renderGameTitle( Texture &title );
 
+/**
+ * Renders & handles start button events.
+ * \param mouse_x X position of the mouse
+ * \param mouse_y Y position of the mouse
+ * \param center_x X position of the center point of the start button
+ * \param middle_y Y position of the center point of the start button
+ * */
 bool handleStartButton( int mouse_x, int mouse_y, int center_x, int middle_y );
 
+/**
+ * Render and handles back button event.
+ * \param mouse_x X position of the mouse
+ * \param mouse_y Y position of the mouse
+*/
 bool handleBackButton( int mouse_x, int mouse_y );
 
+/**
+ * Renders fading transition between MENU and INGAME scene.
+ * \param transIn Decide whether the transition should be fade in or out.
+*/
 void renderTransition( bool &transIn );
 
 //---------------------------SOLO MENU---------------------------
 const int SOLO_MENU_BUTTONS = 5;
-extern SDL_Rect soloMenuButtonBox[SOLO_MENU_BUTTONS];
-extern int SOLO_MENU_BUTTON_X;
-extern int SOLO_MENU_FIRST_BUTTON_Y;
-extern int SOLO_MENU_BUTTON_HEIGHT;
-extern int SOLO_MENU_BUTTON_WIDTH;
-extern int SOLO_BUTTON_PADDING;
-extern const string soloGameModeName[];
+extern SDL_Rect menuButtonBox[SOLO_MENU_BUTTONS];
+extern int GAMEMODE_MENU_BUTTON_X;
+extern int GAMEMODE_MENU_FIRST_BUTTON_Y;
+extern int GAMEMODE_MENU_BUTTON_HEIGHT;
+extern int GAMEMODE_MENU_BUTTON_WIDTH;
+extern int GAMEMODE_BUTTON_PADDING;
+extern const string gameModeName[];
 void renderSoloMenu( int mouse_x, int mouse_y, int &activeButton );
+
+//------------------------MULTIPLAYER MENU-----------------------
+extern const string multiGameModeName[];
+const int MULTI_MENU_BUTTONS = 3;
+void renderMultiMenu( int mouse_x, int mouse_y, int &activeButton, bool isClicked );
+
+bool renderTextInputBox( string title, string button, string &inputString, int mouse_x, int mouse_y, bool isClicked, SDL_Keycode key, string text );
+
+bool renderMatchSettings( int mouse_x, int mouse_y, bool isClicked, SDL_Keycode key, string text );
+
+void renderJoinServer( int mouse_x, int mouse_y, int &activeButton, int &selected, int currPage, bool isClicked, vector<string> address, vector<string> serverName );
+
+extern bool isHost;
+void renderLobby();
+
+
 
 extern int LEFT_ADJUSTMENTBUTTON_X;
 extern int RIGHT_ADJUSTMENTBUTTON_X;
+
+/**
+ * Renders the adjustment buttons (the left and right pointed triangle buttons used for adjusting game preferences or settings).
+ * \param x X position of the center point of the content that need adjusting.
+ * \param y Y position of the center point of the content that need adjusting.
+ * \param disableLeft Indicates that the left button should be disabled (greyed out & non-clickable).
+ * \param disableRight Indicates that the right button should be disabled (greyed out & non-clickable).
+*/
 void renderAdjustmentButton( int x, int y, bool disableLeft, bool disableRight );
 
+//Loads a random ingame background
 void loadRandomBackground();
 
+//Loads menu elements: Button Size, Background, Game Title,...
 void loadMenuElements();
 
+//Renders the result screen
 void renderResultScreen( const Player &player, Uint32 startMark, string time );
 
 int renderRetryScreen( bool &retryLoop, int &scene );
