@@ -553,6 +553,7 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
         while ( SDL_PollEvent( &event ) > 0 )
         {
             if ( event.type == SDL_QUIT ) {scene = QUIT; break;}
+            else if ( changeMenu != scene ) continue;
             else if ( event.button.button == SDL_BUTTON_LEFT )
             {
                 if ( event.type == SDL_MOUSEBUTTONUP )
@@ -595,6 +596,7 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
                             if ( backActive )
                             {
                                 isHost ? server.closeServer() : client.closeSocket();
+                                playerList.clear();
                                 changeMenu = MULTI_MENU;
                                 playSfx( SELECT );
                             }
@@ -867,7 +869,7 @@ void gameSettings( int &scene, int &activeButton, int &adjusted, int mouse_x, in
                 SDL_GetMouseState( &mouse_x, &mouse_y );
                 for (int i = 0; i < NUM_KEY_FUNCTIONS; i++)
                 {
-                    if (handleKeybindButton(keyScanCode[i] != 0 ? string(SDL_GetKeyName( SDL_GetKeyFromScancode( keyScanCode[i]) )) : "-",
+                    if (handleKeybindButton(keyScanCode[i] != 0 ? string(SDL_GetKeyName( SDL_GetKeyFromScancode( keyScanCode[i]) )) : "<->",
                                             mouse_x, mouse_y, LENGTH_UNIT * (40 + 4 * ( i & 1 ) ), LENGTH_UNIT * (14 + i / 2 * 2),
                                             LENGTH_UNIT * 3, LENGTH_UNIT, {150, 150, 150} ))
                     {
@@ -898,6 +900,14 @@ void gameSettings( int &scene, int &activeButton, int &adjusted, int mouse_x, in
                         else if ( catchKey.type == SDL_KEYDOWN)
                         {
                             keyScanCode[activeButton - 1] = catchKey.key.keysym.scancode;
+                            for (int i = 0; i < NUM_KEY_FUNCTIONS; i++)
+                            {
+                                if ( i == activeButton - 1 ) continue;
+                                else if ( keyScanCode[i] == catchKey.key.keysym.scancode )
+                                {
+                                    keyScanCode[i] = SDL_SCANCODE_UNKNOWN;
+                                }
+                            }
                             activeButton = 0;
                             keybindScreen = false;
                             break;
@@ -1062,12 +1072,13 @@ void updateHighScore( int mode, int score, int line, int time )
         case SPRINT:
             for ( int i = 4; i > -1; i-- )
             {
-                if (    hiscore[mode][i][LINE] == 0 || 
-                        hiscore[mode][i][TIME] / hiscore[mode][i][LINE] > time/line ||
-                        (hiscore[mode][i][TIME] / hiscore[mode][i][LINE] == time/line && (  hiscore[mode][i][LINE] < line ||
-                                                                                            (hiscore[mode][i][LINE] == line && hiscore[mode][i][score] < score)
-                                                                                         )
-                        )
+                if (    (hiscore[mode][i][LINE] == 0 && line == 0 && hiscore[mode][i][SCORE] < score) ||
+                        line != 0 &&   (hiscore[mode][i][TIME] / hiscore[mode][i][LINE] > time/line ||
+                                        (hiscore[mode][i][TIME] / hiscore[mode][i][LINE] == time/line && (  hiscore[mode][i][LINE] < line ||
+                                                                                                            (hiscore[mode][i][LINE] == line && hiscore[mode][i][score] < score)
+                                                                                                         )
+                                        )
+                                       )
                     ) place --;
                 else break;
             }
@@ -1166,6 +1177,12 @@ void multiplayerManager( int scene, int &changeScene, int mouse_x, int mouse_y, 
             break;
         case CREATE_SERVER:
         {
+            static bool needEdit = false;
+            if ( !needEdit )
+            {
+                needEdit = true;
+                SDL_StartTextInput();
+            }
             bool start = renderMatchSettings( mouse_x, mouse_y, isClicked, key, text  );
             int status;
             status = adjustmentButton( LENGTH_UNIT * 40, LENGTH_UNIT * 17, mInfo.maxPlayers == 2, mInfo.maxPlayers == 4 );
@@ -1187,7 +1204,8 @@ void multiplayerManager( int scene, int &changeScene, int mouse_x, int mouse_y, 
                 changeScene = MULTI_LOBBY;
                 server.createServer();
                 isHost = true;
-                playerList.push_back( playerInfo {playerName, "randomShit", true} );
+                playerList.push_back( playerInfo {playerName, server.getIPAddressString(), true} );
+                SDL_StopTextInput(); needEdit = false;
             }
         }
             break;
@@ -1196,7 +1214,11 @@ void multiplayerManager( int scene, int &changeScene, int mouse_x, int mouse_y, 
             static int currPage = 0;
             static int selected = -1;
             static bool findServer = false;
-
+            if (!findServer)
+            {
+                client.searchServer();
+                findServer = true;
+            }
             renderJoinServer( mouse_x, mouse_y, activeButton, selected, currPage, isClicked, client.address, client.serverName );
             int totalPages = client.address.size() / 6 + ( client.address.size() % 6 == 0 ? 0 : 1);
             if ( totalPages == 0 ) totalPages = 1;
@@ -1207,11 +1229,115 @@ void multiplayerManager( int scene, int &changeScene, int mouse_x, int mouse_y, 
             if ( isClicked )
             {
                 if ( activeButton == REFRESH ) findServer = false;
-                else if ( activeButton == JOIN ) {changeScene = MULTI_LOBBY; isHost = false; }
+                else if ( activeButton == JOIN ) {changeScene = MULTI_LOBBY; isHost = false; client.connectToServer(selected); selected = -1; };
             }
         }
             break;
         case MULTI_LOBBY:
-            renderLobby();
+        {
+            static int count = 0;
+            renderLobby( mouse_x, mouse_y, activeButton );
+            if ( changeScene == scene)
+            {
+                
+                if ( isHost )
+                {
+                    if ( count == 1000 )
+                    {
+                        server.pingClient();
+                        count = 0;
+                    }
+                    if ( isClicked && activeButton > 0)
+                    {
+                        if ( activeButton == 5 )
+                        {
+                            for ( int i = 1; i < playerList.size(); i++ ) server.makeMsg( "start", i - 1 );
+                            server.sendToClient();
+                            changeScene = INGAME;
+                        }
+                        else
+                        {
+                            for ( int i = 1; i < playerList.size(); i++ )
+                            {
+                                if ( i == activeButton ) server.makeMsg( "kick", i - 1 );
+                                else server.makeMsg( to_string(activeButton) + "quit", i - 1 );
+                            }
+                            server.sendToClient();
+                        }
+                    }
+                    if (playerList.size() < mInfo.maxPlayers && count % 50 == 0) 
+                    {
+                        server.broadcastInvitation();
+                        server.acceptConnection();
+                    }
+                    server.receive();
+                    Sleep(1);
+                    for ( int i = 1; i < playerList.size(); i++ )
+                    {
+                        string msg = server.getMsg( i - 1 );
+                        if (msg == "ready")
+                        {
+                            playerList[i].ready = true;
+                            for ( int j = 0; j < server.getClientNum(); j++ )
+                            {
+                                if ( j + 1 == i ) continue;
+                                else server.makeMsg( to_string(i) + "ready", j );
+                            }
+                        }
+                        else if (msg == "nready")
+                        {
+                            playerList[i].ready = false;
+                            for ( int j = 0; j < server.getClientNum(); j++ )
+                            {
+                                if ( j + 1 == i ) continue;
+                                else server.makeMsg( to_string(i) + "nready", j );
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    if ( isClicked && activeButton != 0 )
+                    {
+                        if ( !playerList[client.getPosition()].ready )
+                        {
+                            client.sendToServer( "ready" );
+                            playerList[client.getPosition()].ready = true;
+                        }
+                        else
+                        {
+                            client.sendToServer( "nready" );
+                            playerList[client.getPosition()].ready = false;
+                        }
+                    }
+                    if ( client.isConnected() )
+                    {
+                        if (count == 1000)
+                        {
+                            client.pingServer();
+                            count = 0;
+                        }
+                        Sleep(1);
+                        client.receive();
+                        string msg = client.getMsg();
+                        if ( msg == "start" ) changeScene = INGAME;
+                        else if ( msg == "kick" ) { client.closeSocket(); changeScene = MULTI_MENU; }
+                        else if ( msg.length() > 0 )
+                        {
+                            int pl = msg[0] - '0';
+                            if ( pl == 0 ) { client.closeSocket(); changeScene = MULTI_MENU; }
+                            else
+                            {
+                                string cmd = msg.substr(1);
+                                if ( cmd == "quit" ) playerList.erase( playerList.begin() + pl );
+                                else if ( cmd == "ready" ) playerList[pl].ready = true;
+                                else if ( cmd == "nready" ) playerList[pl].ready = false;
+                            }
+                        }
+                    }
+                }
+                count++;
+            }
+        }
     }
 }

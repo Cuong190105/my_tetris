@@ -347,14 +347,17 @@ void renderSoloMenu( int mouse_x, int mouse_y, int &activeButton )
     renderText( "SELECT GAME MODE", LENGTH_UNIT * 4, LENGTH_UNIT * 6, true, LEFT, BOTTOM, 3 );
     if ( mouse_x >= GAMEMODE_MENU_BUTTON_X && mouse_x <= GAMEMODE_MENU_BUTTON_X + GAMEMODE_MENU_BUTTON_WIDTH )
     {
+        bool isHoveringOnBtn = false;
         for ( int i = 0; i < SOLO_MENU_BUTTONS; i++ )
         {
             if ( mouse_y >= menuButtonBox[i].y && mouse_y <= menuButtonBox[i].y + GAMEMODE_MENU_BUTTON_HEIGHT + SOLO_BUTTON_PADDING )
             {
                 activeButton = i;
+                isHoveringOnBtn = true;
                 break;
             }
         }
+        if ( !isHoveringOnBtn ) activeButton = -1;
     } else activeButton = -1;
     for ( int i = 0; i < SOLO_MENU_BUTTONS; i++ )
     {
@@ -468,23 +471,10 @@ bool renderTextInputBox( string title, string button, string &inputString, int m
         {
             inputString.pop_back();
         }
-        else if( key == SDLK_c && SDL_GetModState() & KMOD_CTRL )
-        {
-            SDL_SetClipboardText( inputString.c_str() );
-        }
-        else if( key == SDLK_v && SDL_GetModState() & KMOD_CTRL )
-        {
-            char* tempText = SDL_GetClipboardText();
-            inputString = tempText;
-            SDL_free( tempText );
-        }
         else if ( text.length() > 0 && inputString.length() < 16 )
         {
-            if( !( SDL_GetModState() & KMOD_CTRL && ( text[ 0 ] == 'c' || text[ 0 ] == 'C' || text[ 0 ] == 'v' || text[ 0 ] == 'V' ) ) )
-            {
-                inputString += text;
-                text = "";
-            }
+            inputString += text;
+            text = "";
         }
     }
     return false;
@@ -497,14 +487,17 @@ void renderMultiMenu( int mouse_x, int mouse_y, int &activeButton, bool isClicke
     renderText( "CHOOSE AN OPTION", LENGTH_UNIT * 4, LENGTH_UNIT * 6, true, LEFT, BOTTOM, 3 );
     if ( mouse_x >= GAMEMODE_MENU_BUTTON_X && mouse_x <= GAMEMODE_MENU_BUTTON_X + GAMEMODE_MENU_BUTTON_WIDTH )
     {
+        bool isHoveringOnBtn = false;
         for ( int i = 0; i < MULTI_MENU_BUTTONS; i++ )
         {
             if ( mouse_y >= menuButtonBox[i].y && mouse_y <= menuButtonBox[i].y + GAMEMODE_MENU_BUTTON_HEIGHT + SOLO_BUTTON_PADDING )
             {
                 activeButton = i;
+                isHoveringOnBtn = true;
                 break;
             }
         }
+        if ( !isHoveringOnBtn ) activeButton = -1;
     } else activeButton = -1;
     for ( int i = 0; i < MULTI_MENU_BUTTONS; i++ )
     {
@@ -548,8 +541,8 @@ void renderJoinServer( int mouse_x, int mouse_y, int &activeButton, int &selecte
         if ( currPage * 6 + i < address.size() )
         {
             Uint8 cl = tmp == 200 ? 0 : 255;
-            renderText( address[currPage * 6 + i], LENGTH_UNIT * 23, LENGTH_UNIT * (14 + 2 * i), false, CENTER, MIDDLE, 1, { cl, cl, cl });
-            renderText( address[currPage * 6 + i], LENGTH_UNIT * 23, LENGTH_UNIT * (14 + 2 * i), false, CENTER, MIDDLE, 1, { cl, cl, cl });
+            renderText( address[currPage * 6 + i], LENGTH_UNIT * 16, LENGTH_UNIT * (15 + 2 * i), false, CENTER, MIDDLE, 1, { cl, cl, cl });
+            renderText( serverName[currPage * 6 + i], LENGTH_UNIT * 22, LENGTH_UNIT * (15 + 2 * i), false, LEFT, MIDDLE, 1, { cl, cl, cl });
             if ( mouse_x >= row.x && mouse_x <= row.x + row.w && mouse_y >= row.y && mouse_y <= row.y + row.h )
             {
                 activeButton = currPage * 6 + i;
@@ -581,18 +574,20 @@ void renderJoinServer( int mouse_x, int mouse_y, int &activeButton, int &selecte
     if (mouse_y >= LENGTH_UNIT * 31 && mouse_y <= LENGTH_UNIT * 33)
     {
         if (mouse_x >= LENGTH_UNIT * 22 && mouse_x <= LENGTH_UNIT * 30) { rfcl = 255; activeButton = REFRESH; }
-        else if (mouse_x >= LENGTH_UNIT * 34 && mouse_x <= LENGTH_UNIT * 42) { joincl = 255; activeButton = JOIN; }
+        else if ( selected != -1 && mouse_x >= LENGTH_UNIT * 34 && mouse_x <= LENGTH_UNIT * 42) { joincl = 255; activeButton = JOIN; }
     }
     SDL_SetRenderDrawColor( renderer, rfcl, rfcl, rfcl, rfcl );
     SDL_RenderFillRect( renderer, &f5BtnBox );
     SDL_SetRenderDrawColor( renderer, joincl, joincl, joincl, joincl );
     SDL_RenderFillRect( renderer, &joinBtnBox );
+    if (selected == -1) joincl = 155;
     renderText( "REFRESH",  LENGTH_UNIT * 26, LENGTH_UNIT * 32, false, CENTER, MIDDLE, 1, { (Uint8)(255 - rfcl), (Uint8)(255 - rfcl), (Uint8)(255 - rfcl) } );
     renderText( "JOIN",  LENGTH_UNIT * 38, LENGTH_UNIT * 32, false, CENTER, MIDDLE, 1,  { (Uint8)(255 - joincl), (Uint8)(255 - joincl), (Uint8)(255 - joincl) } );
 }
 
-void renderLobby()
+void renderLobby( int mouseX, int mouseY, int &activeButton )
 {
+    activeButton = 0;
     renderText( mInfo.serverName, LENGTH_UNIT * 10, LENGTH_UNIT * 6, true, LEFT, BOTTOM, 2 );
     SDL_Rect info { LENGTH_UNIT * 16, LENGTH_UNIT * 8, LENGTH_UNIT * 32, LENGTH_UNIT * 10 };
     SDL_SetRenderDrawColor( renderer, 0, 0, 0, 225 );
@@ -617,19 +612,18 @@ void renderLobby()
         if ( i < playerList.size() )
         {
             renderText( playerList[i].name + (i == 0 ? " (Host)" : ""), LENGTH_UNIT * 18, LENGTH_UNIT * ( 23 + i * 1.5 ), false, LEFT, CENTER );
-            if ( i != 0 && playerList[i].ready )
+            if ( i != 0 )
             {
-                renderText( "READY", LENGTH_UNIT * 44, LENGTH_UNIT * ( 22 + i * 1.5 ), false, CENTER, MIDDLE, 1, {43, 255, 96} );
-            }
-            else
-            {
-                everyoneReady = false;
-                renderText( "NOT READY", LENGTH_UNIT * 44, LENGTH_UNIT * ( 22 + i * 1.5 ), false, CENTER, MIDDLE, 1, {255, 107, 84} );
+                if (playerList[i].ready)
+                    renderText( "READY", LENGTH_UNIT * 44, LENGTH_UNIT * ( 23 + i * 1.5 ), false, CENTER, MIDDLE, 1, {43, 255, 96} );
+                else
+                {
+                    everyoneReady = false;
+                    renderText( "NOT READY", LENGTH_UNIT * 44, LENGTH_UNIT * ( 23 + i * 1.5 ), false, CENTER, MIDDLE, 1, {255, 107, 84} );
+                }
             }
         }
     }
-    int mouseX, mouseY;
-    SDL_GetMouseState( &mouseX, &mouseY );
     if ( isHost )
     {
         if ( mouseY >= LENGTH_UNIT * 22.25 && mouseY < LENGTH_UNIT * 28.25 && mouseX >= LENGTH_UNIT * 16 && mouseX <= LENGTH_UNIT * 48 )
@@ -637,12 +631,13 @@ void renderLobby()
             int nthPlayer = (mouseY - LENGTH_UNIT * 22.25) / (1.5 * LENGTH_UNIT);
             if ( nthPlayer > 0 && nthPlayer < playerList.size() )
             {
-                SDL_Rect kickBtn { LENGTH_UNIT * 38, LENGTH_UNIT * (nthPlayer * 1.5 + 22.5), LENGTH_UNIT * 4, LENGTH_UNIT };
+                SDL_Rect kickBtn { LENGTH_UNIT * 36, LENGTH_UNIT * (nthPlayer * 1.5 + 22.5), LENGTH_UNIT * 4, LENGTH_UNIT };
                 SDL_SetRenderDrawColor( renderer, 255, 255, 255, 255 );
                 if ( mouseX >= kickBtn.x && mouseX <= kickBtn.x + kickBtn.w && mouseY >= kickBtn.y && mouseY <= kickBtn.y + kickBtn.h )
                 {
                     SDL_RenderFillRect( renderer, &kickBtn );
                     renderText( "KICK", kickBtn.x + kickBtn.w / 2, kickBtn.y + kickBtn.h / 2, false, CENTER, MIDDLE, 1, {0, 0, 0} );
+                    activeButton = nthPlayer;
                 }
                 else
                 {
@@ -659,6 +654,7 @@ void renderLobby()
                 SDL_SetRenderDrawColor( renderer, 255, 255, 255, 255 );
                 SDL_RenderFillRect( renderer, &startButton );
                 renderText( "START", startButton.x + startButton.w / 2, startButton.y + startButton.h / 2, false, CENTER, MIDDLE, 1, {0, 0, 0} );
+                activeButton = 5;
             }
             else
             {
@@ -681,6 +677,7 @@ void renderLobby()
             SDL_SetRenderDrawColor( renderer, 255, 255, 255, 255 );
             SDL_RenderFillRect( renderer, &readyButton );
             renderText( btnText, readyButton.x + readyButton.w / 2, readyButton.y + readyButton.h / 2, false, CENTER, MIDDLE, 1, { 0, 0, 0 } );
+            activeButton = true;
         }
         else
         {
@@ -710,30 +707,17 @@ bool renderMatchSettings( int mouse_x, int mouse_y, bool isClicked, SDL_Keycode 
         {
             mInfo.serverName.pop_back();
         }
-        else if( key == SDLK_c && SDL_GetModState() & KMOD_CTRL )
-        {
-            SDL_SetClipboardText( mInfo.serverName.c_str() );
-        }
-        else if( key == SDLK_v && SDL_GetModState() & KMOD_CTRL )
-        {
-            char* tempText = SDL_GetClipboardText();
-            mInfo.serverName = tempText;
-            SDL_free( tempText );
-        }
         else if ( text.length() > 0 && mInfo.serverName.length() < 30 )
         {
-            if( !( SDL_GetModState() & KMOD_CTRL && ( text[ 0 ] == 'c' || text[ 0 ] == 'C' || text[ 0 ] == 'v' || text[ 0 ] == 'V' ) ) )
-            {
-                mInfo.serverName += text;
-                text = "";
-            }
+            mInfo.serverName += text;
+            text = "";
         }
     }
     int color = focus ? 255 : 100;
     SDL_SetRenderDrawColor( renderer, color, color, color, color );
     SDL_RenderDrawRect( renderer, &textBox );
     renderText( "Server's name:", LENGTH_UNIT * 18, LENGTH_UNIT * 12, false, LEFT, BOTTOM );
-    renderText( mInfo.serverName + (focus ? "|" : ""), LENGTH_UNIT * 20, LENGTH_UNIT * 14, false, LEFT, CENTER );
+    if ( focus || mInfo.serverName.length() > 0 ) renderText( mInfo.serverName + (focus ? "|" : ""), LENGTH_UNIT * 20, LENGTH_UNIT * 14, false, LEFT, CENTER );
     renderText( to_string(mInfo.serverName.length()) + "/30", LENGTH_UNIT * 44, LENGTH_UNIT * 14, false, RIGHT, CENTER );
 
     renderText( "Maximum number of players:", LENGTH_UNIT * 18, LENGTH_UNIT * 17, false, LEFT, CENTER );

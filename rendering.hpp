@@ -104,7 +104,7 @@ bool renderMatchSettings( int mouse_x, int mouse_y, bool isClicked, SDL_Keycode 
 void renderJoinServer( int mouse_x, int mouse_y, int &activeButton, int &selected, int currPage, bool isClicked, vector<string> address, vector<string> serverName );
 
 extern bool isHost;
-void renderLobby();
+void renderLobby( int mouseX, int mouseY, int &activeButton );
 
 
 

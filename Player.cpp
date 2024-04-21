@@ -576,14 +576,32 @@ void Player::handleMysteryEvents( vector<Tetromino> &Tqueue )
             break;
         }
         case HORIZONTAL_SHIFT:
+        {
+            static int upperRow, lowerRow;
             if ( !eventCreated )
             {
                 tmp = rand() % 8 + 5;
+                int stackHeight = HEIGHT_BY_TILE;
+                for (int i = HEIGHT_BY_TILE - 1; i > -1; i--)
+                {
+                    for (int j = 0; j < WIDTH_BY_TILE; j++)
+                    {
+                        if ( pb.getCellState(i, j) != 0 )
+                        {
+                            stackHeight = i;
+                            break;
+                        }
+                    }
+                    if ( stackHeight < HEIGHT_BY_TILE ) break;
+                }
+                lowerRow = rand() % (stackHeight + 1);
+                upperRow = rand() % (stackHeight + 1);
+                if ( upperRow < lowerRow ) swap(lowerRow, upperRow);
                 eventCreated = true;
             }
             else if ( tmp > 0 && SDL_GetTicks() - mysteryMark > 1000 / 9 )
             {
-                for (int j = 0; j < HEIGHT_BY_TILE; j++)
+                for (int j = lowerRow; j <= upperRow; j++)
                 {
                     int popped = pb.getCellState( j, 0 );
                     for (int k = 0; k < WIDTH_BY_TILE - 1; k++)
@@ -596,6 +614,7 @@ void Player::handleMysteryEvents( vector<Tetromino> &Tqueue )
                 tmp --;
                 if (tmp != 0) delaySpawnMark = SDL_GetTicks() + 1000 / 8;
             }
+        }
             break;
         default:
             break;
