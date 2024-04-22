@@ -15,7 +15,7 @@ string playerName = "";
 string tmpName = "";
 bool isHost = false;
 const char delimiter = '\x1F';
-
+const char endMsg = '\x1D';
 struct matchInfo mInfo;
 
 vector<playerInfo> playerList;
@@ -200,16 +200,19 @@ bool Server::acceptConnection()
         //Make it non blocking socket
         unsigned long b = 1;
         ioctlsocket(ClientSocket, FIONBIO, &b);
-
-        //Receive new client info: Name & address, then push into playerList
-        int buf = 16;
-        char tmp[buf];
-        memset(&tmp, '\0', buf);
-        int info = recv(ClientSocket, tmp, buf, 0);
-
         int len = sizeof(sockaddr_in);
         getpeername(ClientSocket, (sockaddr*)&addr, &len);
         clientSocket.push_back(ClientSocket);
+
+        // int buf = 16;
+        // char tmp[buf];
+        // memset(&tmp, '\0', buf);
+        // int info = recv(ClientSocket, tmp, buf, 0);
+
+        //Receive new client info: Name & address, then push into playerList
+        receive();
+        string tmp = getMsg( getClientNum() - 1 );
+
         playerList.push_back(playerInfo{tmp, inet_ntoa(addr.sin_addr), false});
 
         //Send to new client server's info: match settings, other players' info.
@@ -219,7 +222,8 @@ bool Server::acceptConnection()
         {
             serverInfo += delimiter + playerList[i].name + delimiter + playerList[i].address + delimiter + to_string(playerList[i].ready);
         }
-        send(ClientSocket, serverInfo.c_str(), serverInfo.length(), 0);
+        makeMsg(serverInfo, getClientNum() - 1);
+        sendToClient();
     }
     return success;
 }
@@ -230,7 +234,8 @@ void Server::sendToClient()
     {
         if ( msgToEachClient[i].length() != 0 )
         {
-            if ( send( clientSocket[i], msgToEachClient[i].c_str(), msgToEachClient[i].length(), 0 ) == SOCKET_ERROR )
+            int info = send( clientSocket[i], msgToEachClient[i].c_str(), msgToEachClient[i].length(), 0 );
+            if ( info == SOCKET_ERROR )
                 closeClientSocket(i);
             else msgToEachClient[i] = "";
         }
@@ -244,7 +249,7 @@ void Server::receive()
         char tmp[BUFFER_SIZE];
         memset(&tmp, 0, BUFFER_SIZE);
         int info = recv( clientSocket[i], tmp, BUFFER_SIZE, 0 );
-        if ( info > 0 && strcmp(tmp, "ping") != 0 )
+        if ( info > 0 && strcmp(tmp, "ping\x1E") != 0 )
         {
             clientMsg[i] = tmp;
         }
@@ -270,14 +275,20 @@ void Server::receive()
 
 void Server::makeMsg( string msg, int client )
 {
-    msgToEachClient[client] = msg;
+    msgToEachClient[client] = msg + endMsg;
 }
 
 string Server::getMsg( int client )
-{
-    string tmp = clientMsg[client];
-    clientMsg[client] = "";
-    return tmp;
+{   
+    int endMsgPos = 0;
+    string res = "";
+    for ( int i = 0; i < clientMsg[client].length(); i++ )
+    {
+        if ( clientMsg[client][i] == endMsg ) {endMsgPos = i + 1; break;}
+        else res += clientMsg[client][i];
+    }
+    clientMsg[client] = clientMsg[client].substr(endMsgPos);
+    return res;
 }
 
 void Server::pingClient()
@@ -319,24 +330,28 @@ bool Client::isConnected() { return connected; }
 
 void Client::connectToServer( int serverNum )
 {
+    //Initializing winsock & create connect socket
     WSAStartup(MAKEWORD(2, 2), &wsaData);
     sockaddr_in svAddr;
     svAddr.sin_family = AF_INET;
     svAddr.sin_addr.s_addr = inet_addr(address[serverNum].c_str());
     svAddr.sin_port = htons(stoi(DEFAULT_PORT));
-
     connectSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP );
     if (connectSocket == INVALID_SOCKET) { closeSocket(); return; }
     if (connect(connectSocket, (sockaddr*)&svAddr, sizeof(svAddr)) == SOCKET_ERROR) {closeSocket(); return;}
-    connected = true;
-    send(connectSocket, playerName.c_str(), playerName.size(), 0);
-    Sleep(50);
-    char serverInfo[BUFFER_SIZE];
-    memset(&serverInfo, 0, BUFFER_SIZE);
-    recv(connectSocket, serverInfo, BUFFER_SIZE, 0);
     unsigned long b = 1; ioctlsocket(connectSocket, FIONBIO, &b);
-
-    string tmp = serverInfo;
+    connected = true;
+    
+    //Sending this client info & receiving server info
+    sendToServer(playerName);
+    Sleep(50);
+    string tmp = "";
+    while ( tmp == "" )
+    {
+        receive();
+        tmp = getMsg();
+        Sleep(5);
+    }
     int part = 0;
     vector<string> info(17, "");
     for (int i = 0; i < tmp.length(); i++)
@@ -354,7 +369,7 @@ void Client::connectToServer( int serverNum )
 
 void Client::sendToServer(string sendString)
 {
-    int info = send( connectSocket, sendString.c_str(), sendString.length(), 0 );
+    int info = send( connectSocket, (sendString + endMsg).c_str(), sendString.length(), 0 );
     if (info == SOCKET_ERROR)
     {
         closeSocket();
@@ -363,11 +378,11 @@ void Client::sendToServer(string sendString)
 
 void Client::searchServer()
 {
-    //Flush server list
+    //Flushes server list
     serverName.clear();
     address.clear();
 
-    //Create socket for receiving broadcast messages
+    //Creates socket for receiving broadcast messages
     WSAStartup(MAKEWORD(2, 2), &wsaData);
     SOCKET search = socket( AF_INET, SOCK_DGRAM, 0 );
     char i = 1;
@@ -386,34 +401,40 @@ void Client::searchServer()
         closesocket(search);
         return;
     }
-    unsigned long b = 1; ioctlsocket(connectSocket, FIONBIO, &b);
+    unsigned long b = 1;
+    ioctlsocket(search, FIONBIO, &b);
     int len = sizeof(sockaddr_in);
     int cycle = 0;
     map<string, string> svList;
 
     //Loop to scan all available servers in case their messages fails to reach the client
-    // while (cycle < 5)
-    // {
+    while (cycle < 250)
+    {
         memset(&recvMsg, 0, BUFFER_SIZE);
         int info = recvfrom( search, recvMsg, BUFFER_SIZE, 0, (sockaddr *)&addr, &len );
-        if (info > 0)
+        if (info == SOCKET_ERROR && WSAGetLastError() != WSAEWOULDBLOCK)
+        {
+            cout << WSAGetLastError() << " Broadcast listener error" << endl;
+            break;
+        }
+        else if (strlen(recvMsg) > 0)
         {
             string svName = recvMsg;
             string add = inet_ntoa(addr.sin_addr);
             svList[add] = svName;
         }
-    //     Sleep(5);
-    //     cycle++;
-    // }
+        Sleep(2);
+        cycle++;
+    }
 
-    //Fill the server list with gathered info
+    //Fills the server list with gathered info
     for (map<string, string>::iterator it = svList.begin(); it != svList.end(); it++)
     {
         address.push_back(it->first);
         serverName.push_back(it->second);
     }
 
-    //Close broadcast socket
+    //Closes broadcast socket
     closesocket(search);
     WSACleanup();
 }
@@ -428,16 +449,26 @@ void Client::receive()
         closesocket(connectSocket);
         WSACleanup();
     }
-    else if ( strcmp(tmp, "ping") != 0 )
+    else if ( strcmp(tmp, "ping\x1E") != 0 )
     {
-        recvMsg = tmp;
+        recvMsg += tmp;
     }
 }
 
 string Client::getMsg()
 {
-    string res = recvMsg;
-    recvMsg = "";
+    //Marks the position of the EndMsg character. The message before the mark will be returned
+    int endMsgPos = 0;
+    string res = "";
+    for ( int i = 0; i < recvMsg.length(); i++ )
+    {
+        if ( recvMsg[i] == endMsg ) {endMsgPos = i + 1; break;}
+        else res += recvMsg[i];
+    }
+
+    //Trims the returned message to keep only the unread messages.
+    recvMsg = recvMsg.substr(endMsgPos);
+    
     return res;
 }
 
@@ -458,6 +489,8 @@ void Client::closeSocket()
 
 int Client::getPosition() { return position; }
 
+
+//Code for running this file as a separate app for testing
 // atomic<bool> stop;
 
 // void SvRun()

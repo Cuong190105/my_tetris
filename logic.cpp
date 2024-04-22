@@ -1229,7 +1229,7 @@ void multiplayerManager( int scene, int &changeScene, int mouse_x, int mouse_y, 
             if ( isClicked )
             {
                 if ( activeButton == REFRESH ) findServer = false;
-                else if ( activeButton == JOIN ) {changeScene = MULTI_LOBBY; isHost = false; client.connectToServer(selected); selected = -1; };
+                else if ( activeButton == JOIN ) {changeScene = MULTI_LOBBY; isHost = false; client.connectToServer(selected); selected = -1; activeButton = -1;};
             }
         }
             break;

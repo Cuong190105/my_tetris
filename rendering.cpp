@@ -593,10 +593,11 @@ void renderLobby( int mouseX, int mouseY, int &activeButton )
     SDL_SetRenderDrawColor( renderer, 0, 0, 0, 225 );
     SDL_RenderFillRect( renderer, &info );
     renderText( "INFO", LENGTH_UNIT * 18, LENGTH_UNIT * 10, true, LEFT, BOTTOM );
-    renderText( "Game mode: " + gameModeName[mInfo.gameMode], LENGTH_UNIT * 18, LENGTH_UNIT * 12, false, LEFT, MIDDLE );
-    renderText( "Max players: " + to_string( mInfo.maxPlayers ), LENGTH_UNIT * 18, LENGTH_UNIT * 13.5, false, LEFT, MIDDLE );
-    renderText( "Initial level speed: " + to_string( mInfo.lvlSpd ), LENGTH_UNIT * 18, LENGTH_UNIT * 15, false, LEFT, MIDDLE );
-    renderText( "Win count: " + to_string( mInfo.winCount ), LENGTH_UNIT * 18, LENGTH_UNIT * 16.5, false, LEFT, MIDDLE );
+    renderText( "Servers' address: " + playerList[0].address, LENGTH_UNIT * 18, LENGTH_UNIT * 11.5, false, LEFT, MIDDLE );
+    renderText( "Game mode: " + gameModeName[mInfo.gameMode], LENGTH_UNIT * 18, LENGTH_UNIT * 13, false, LEFT, MIDDLE );
+    renderText( "Max players: " + to_string( mInfo.maxPlayers ), LENGTH_UNIT * 18, LENGTH_UNIT * 14.5, false, LEFT, MIDDLE );
+    renderText( "Initial level speed: " + to_string( mInfo.lvlSpd ), LENGTH_UNIT * 18, LENGTH_UNIT * 16, false, LEFT, MIDDLE );
+    renderText( "Win count: " + to_string( mInfo.winCount ), LENGTH_UNIT * 18, LENGTH_UNIT * 17.5, false, LEFT, MIDDLE );
 
     SDL_Rect playerListBoard { LENGTH_UNIT * 16, LENGTH_UNIT * 19, LENGTH_UNIT * 32, LENGTH_UNIT * 10 };
     SDL_SetRenderDrawColor( renderer, 0, 0, 0, 225 );
