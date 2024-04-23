@@ -62,8 +62,8 @@ void handlePauseMenu( int &activeButton, int &mouse_x, int &mouse_y )
 void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &transIn )
 {
     bool play = true;
-    SDL_Texture *foreground = SDL_CreateTexture( renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, WINDOW_WIDTH, WINDOW_HEIGHT );
-    SDL_SetTextureBlendMode( foreground, SDL_BLENDMODE_BLEND );
+    Texture foreground;
+    foreground.createTargetTexture();
     while ( play )
     {
         vector<Tetromino> Tqueue;
@@ -84,12 +84,12 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                 bgImage.render();
                 if ( start )
                 {
-                    SDL_SetRenderTarget( renderer, foreground );
-                    SDL_SetRenderDrawColor( renderer, 0, 0, 0, 0 );
-                    SDL_RenderClear( renderer );
+                    foreground.setAsTarget();
                 }
                 player.displayBoard();
                 player.displayTetrominoQueue( Tqueue );
+
+                //Renders countdown
                 if ( !start ) 
                 {
                     SDL_Event catchQuit;
@@ -124,10 +124,11 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                     player.displayCurrentTetromino();
                     player.displayHeldTetromino();
                     player.displayBonus();
+
+                    //Handles win conditions, leveling && mystery events
                     switch( gameMode )
                     {
                         case SPRINT:
-                            // if ( player.getLine() >= mod[LINECAP] ) {player.terminateGame(); win = true;}
                             if ( player.getLine() >= mod[LINECAP] ) {player.terminateGame(); win = true;}
                             break;
                         case BLITZ:
@@ -164,8 +165,10 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                             break;
                     }
                     SDL_SetRenderTarget( renderer, NULL );
-                    if ( player.getMysteryEvent() == UPSIDE_DOWN ) SDL_RenderCopyEx( renderer, foreground, NULL, NULL, 180, NULL, SDL_FLIP_NONE );
-                    else SDL_RenderCopy( renderer, foreground, NULL, NULL );
+                    // if ( player.getMysteryEvent() == UPSIDE_DOWN ) SDL_RenderCopyEx( renderer, foreground, NULL, NULL, 180, NULL, SDL_FLIP_NONE );
+                    // else SDL_RenderCopy( renderer, foreground, NULL, NULL );
+                    if ( player.getMysteryEvent() == UPSIDE_DOWN ) foreground.render( 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, NULL, 180 );
+                    else foreground.render();
                     if ( scene == PAUSE ) { pauseMark = SDL_GetTicks(); pauseMusic(); }
                     TTF_SetFontSize( fontBold, LENGTH_UNIT );
                     TTF_SetFontSize( fontRegular, LENGTH_UNIT );
@@ -182,8 +185,10 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                     player.displayBoard();
                     player.displayCurrentTetromino();
                     SDL_SetRenderTarget( renderer, NULL );
-                    if ( gameMode == MYSTERY && player.getMysteryEvent() == UPSIDE_DOWN ) SDL_RenderCopyEx( renderer, foreground, NULL, NULL, 180, NULL, SDL_FLIP_NONE );
-                    else SDL_RenderCopy( renderer, foreground, NULL, NULL );
+                    if ( player.getMysteryEvent() == UPSIDE_DOWN ) foreground.render( 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, NULL, 180 );
+                    else foreground.render();
+                    // if ( gameMode == MYSTERY && player.getMysteryEvent() == UPSIDE_DOWN ) SDL_RenderCopyEx( renderer, foreground, NULL, NULL, 180, NULL, SDL_FLIP_NONE );
+                    // else SDL_RenderCopy( renderer, foreground, NULL, NULL );
                     SDL_Rect overlay { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
                     SDL_SetRenderDrawColor( renderer, 0, 0, 0, 225 );
                     SDL_RenderFillRect( renderer, &overlay );
@@ -246,7 +251,7 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                                 }
                                 else if ( scene == INGAME_SETTINGS )
                                 {
-                                    if ( adjusted == PRESSED || activeButton != 0 ) playSfx( SELECT );
+                                    // if ( adjusted == PRESSED || activeButton != 0 ) playSfx( SELECT );
                                     adjusted = INITIAL;
                                     if ( activeButton == 100 )
                                     {
@@ -285,7 +290,7 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                     
                     TTF_SetFontSize( fontBold, TILE_WIDTH * 3 / 4 );
                     TTF_SetFontSize( fontRegular, TILE_WIDTH * 3 / 4 );
-                    SDL_SetRenderTarget( renderer, foreground );
+                    foreground.setAsTarget();
                     TTF_SetFontSize( fontBold, LENGTH_UNIT );
                     TTF_SetFontSize( fontRegular, LENGTH_UNIT );
                     clearScreen();
@@ -299,7 +304,7 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                         else renderText( "LEVEL COMPLETED!", player.getX() + BOARD_WIDTH / 2, player.getY() + BOARD_HEIGHT / 2 - LENGTH_UNIT * 3, true, CENTER, MIDDLE, 2);
                     }
                     SDL_SetRenderTarget( renderer, NULL );
-                    SDL_RenderCopy( renderer, foreground, NULL, NULL );
+                    foreground.render();
                     SDL_RenderPresent( renderer );
                 }
 
@@ -317,8 +322,8 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                     clearScreen();
                     bgImage.render();
                     SDL_SetRenderTarget( renderer, NULL );
-                    SDL_SetTextureAlphaMod( foreground, 255 * max((int)( 500 - SDL_GetTicks() + endMark ), 0) / 500 );
-                    SDL_RenderCopy( renderer, foreground, NULL, NULL );
+                    foreground.setAlphaMod( 255 * max((int)( 500 - SDL_GetTicks() + endMark ), 0) / 500 );
+                    foreground.render();
                     SDL_RenderPresent( renderer );
                 }
 
@@ -327,34 +332,215 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                 {
                     clearScreen();
                     bgImage.render();
-                    SDL_SetRenderTarget( renderer, foreground );
+                    foreground.render();
                     clearScreen();
                     renderResultScreen(player, endMark, time );
                     SDL_SetRenderTarget( renderer, NULL );
                     if (SDL_GetTicks() - endMark <= 500)
                     {
-                        SDL_SetTextureAlphaMod( foreground, min(255 * (int)(SDL_GetTicks() - endMark) / 500, 255) );
+                        foreground.setAlphaMod( min(255 * (int)(SDL_GetTicks() - endMark) / 500, 255) );
                     }
                     else if ( SDL_GetTicks() - endMark > 6000 )
                     {
-                        SDL_SetTextureAlphaMod( foreground, max(255 * (int)(6500 - SDL_GetTicks() + endMark) / 500, 0) );
+                        foreground.setAlphaMod( max(255 * (int)(6500 - SDL_GetTicks() + endMark) / 500, 0) );
                     }
-                    SDL_RenderCopy( renderer, foreground, NULL, NULL );
+                    foreground.render();
                     SDL_RenderPresent( renderer );
                 }
 
             }
         }
+
+        //Handles multiplayer modes
         else
         {
-            vector<Player> player;
+            int x = (WINDOW_WIDTH - BOARD_WIDTH) / 2, y = (WINDOW_HEIGHT - BOARD_HEIGHT) / 2;
+            vector<Player> player ( players, Player(mod[LEVEL], gameMode, x, y) );
             vector<int> queuePosition( players, 0 );
-            for (int i = 0; i < players; i++)
+            int mainPos = isHost ? 0 : client.getPosition();
+
+            //Target textures for each playfield
+            Texture mainPlayerTexture;
+            mainPlayerTexture.createTargetTexture();
+            vector<Texture> sidePlayerTextures ( players - 1);
+            for ( int i = 0; i < sidePlayerTextures.size(); i++ )
             {
-                int x = ( (2 * i + 1 ) * WINDOW_WIDTH / players - BOARD_WIDTH) / 2, y = (WINDOW_HEIGHT - BOARD_HEIGHT) / 2;
-                player.push_back( Player( mod[LEVEL], gameMode, x, y ) );
+                sidePlayerTextures[i].createTargetTexture();
+            }
+
+            //Stores match results & essential flags for starting/terminating match or doing animation
+            vector<int> winCounter (players, 0);
+            bool endMatch = false, startRound = false, anyEliminated = true;
+            int survivors = players;
+            Uint32 lastEliminationMark = SDL_GetTicks();
+
+            //The frame that trims the source texture used in SDL_RenderCopy
+            SDL_Rect TRIM_FRAME { WINDOW_WIDTH / 4, 0, WINDOW_WIDTH / 2, WINDOW_HEIGHT };
+
+            /**
+             * Sample frames as layout for displaying playfields. The used frames will be set to sample at the start of the game
+             * and will gradually change & distribute to match the new sample if any player is eliminated to create the animation.
+             */
+
+            vector<SDL_Rect> sampleSideFrame (survivors - 1, {0, 0, WINDOW_WIDTH / 4, WINDOW_HEIGHT / 2});
+
+            //Main frame for this player, side frames for the opponents
+            SDL_Rect mainFrame { 0, 0, WINDOW_WIDTH / 2, WINDOW_HEIGHT };
+            vector<SDL_Rect> sideFrame ( survivors - 1 );
+            const int animationDuration = 1000; 
+            while ( !endMatch )
+            {
+                
+                SDL_Event e;
+                while( SDL_PollEvent(&e) > 0 )
+                {
+                    if ( e.type == SDL_QUIT )
+                    {
+                        endMatch = true;
+                        play = false;
+                        scene = QUIT;
+                    }
+                }
+                //Calculates the sample render frames at the start of the game or when any player is eliminated
+                
+                if ( anyEliminated )
+                {
+                    if ( !player[mainPos].isGameOver() )
+                    {
+                        sampleSideFrame[0].x = WINDOW_WIDTH / 2;
+                        if (survivors == 2)
+                        {
+                            sampleSideFrame[0].w *= 2;
+                            sampleSideFrame[0].h *= 2;
+                        }
+                        else
+                        {
+                            sampleSideFrame[1].x = WINDOW_WIDTH * 3 / 4;
+                            if (survivors == 3)
+                            {
+                                sampleSideFrame[0].y = WINDOW_HEIGHT / 4;
+                                sampleSideFrame[1].y = WINDOW_HEIGHT / 4;
+                            }
+                            else
+                            {
+                                sampleSideFrame[2].x = WINDOW_WIDTH * 5 / 8;
+                                sampleSideFrame[2].y = WINDOW_HEIGHT / 2;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        
+                        for ( int i = 0; i < survivors; i++ )
+                        {
+                            sampleSideFrame[i].w = WINDOW_WIDTH / survivors;
+                            sampleSideFrame[i].h = 2 * WINDOW_HEIGHT / survivors;
+                            sampleSideFrame[i].x = i * sampleSideFrame[i].x;
+                            sampleSideFrame[i].y = (WINDOW_HEIGHT - sampleSideFrame[i].h) / 2;
+                        }
+                    }
+                    
+                    //Assigns values for the used frames at the start of the game
+                    if ( !startRound )
+                    {
+                        for ( int i = 0; i < sideFrame.size(); i++ )
+                                sideFrame[i] = sampleSideFrame[i];
+                    }
+                    anyEliminated = false;
+                }
+
+                //Renders to each frame
+                clearScreen();
+                
+
+                for ( int i = 0; i < survivors; i++ )
+                {
+                    if ( i == mainPos ) mainPlayerTexture.setAsTarget();
+                    else sidePlayerTextures[i - (i > mainPos)].setAsTarget();
+                    player[i].displayBoard();
+                    player[i].displayTetrominoQueue( Tqueue );
+                    if ( !startRound )
+                    {
+                        if ( !transIn )
+                        {
+                            startRound = displayCountdown(player[i].getX(), player[i].getY(), BOARD_WIDTH, BOARD_HEIGHT, startMark) && i == survivors - 1;
+                            if ( startRound && i == survivors - 1 )
+                            {
+                                startMark = SDL_GetTicks();
+                                playBackgroundMusic((players > 1 || gameMode == MASTER) ? FAST_THEME : CHILL_THEME);
+                            }
+                        }
+                    }
+                    else if ( scene == INGAME )
+                    {
+                        
+                        TTF_SetFontSize( fontBold, TILE_WIDTH * 3 / 4 );
+                        TTF_SetFontSize( fontRegular, TILE_WIDTH * 3 / 4 );
+                        renderStatistics( player[i], startMark );
+                        player[i].displayCurrentTetromino();
+                        player[i].displayHeldTetromino();
+                        player[i].displayBonus();
+                        TTF_SetFontSize( fontBold, LENGTH_UNIT );
+                        TTF_SetFontSize( fontRegular, LENGTH_UNIT );
+                        
+                    }
+                }
+                SDL_SetRenderTarget( renderer, NULL );
+
+                //Renders each frame to the main window
+                //Error inside this block
+                bgImage.render();
+                
+                if ( sampleSideFrame[0].x != sideFrame[0].x || sampleSideFrame[0].y != sideFrame[0].y )
+                {
+                    //get delta time
+                    double progress = (SDL_GetTicks() - lastEliminationMark) / animationDuration;
+
+                    if ( progress <= 1 )
+                    {
+                        //Quadratic ease out
+                        double relativePosition = 1 - (1 - progress) * (1 - progress);
+                        for (int i = 0; i < sideFrame.size(); i++)
+                        {
+                            SDL_Rect tmp {
+                                (sampleSideFrame[i].x - sideFrame[i].x) * relativePosition + sideFrame[i].x,
+                                (sampleSideFrame[i].y - sideFrame[i].y) * relativePosition + sideFrame[i].y,
+                                (sampleSideFrame[i].w - sideFrame[i].w) * relativePosition + sideFrame[i].w,
+                                (sampleSideFrame[i].h - sideFrame[i].h) * relativePosition + sideFrame[i].h,
+                            };
+                            sidePlayerTextures[i].render( tmp.x, tmp.x, tmp.w, tmp.h, &TRIM_FRAME);
+                        }
+                    }
+                    else
+                    {
+                        for (int i = 0; i < sideFrame.size(); i++)
+                        {
+                            sideFrame[i] = sampleSideFrame[i];
+                            sidePlayerTextures[i].render( sideFrame[i].x, sideFrame[i].x, sideFrame[i].w, sideFrame[i].h, &TRIM_FRAME);
+                        }
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < sideFrame.size(); i++)
+                    {
+                        sidePlayerTextures[i].render( sideFrame[i].x, sideFrame[i].y, sideFrame[i].w, sideFrame[i].h, &TRIM_FRAME);
+                    }
+                }
+                mainPlayerTexture.render( mainFrame.x, mainFrame.y, mainFrame.w, mainFrame.h, &TRIM_FRAME );
+
+                //Render Transitions overlay
+                if ( !startRound && transIn )
+                {
+                    renderTransition( transIn );
+                    if ( !transIn ) startMark = SDL_GetTicks();
+                }
+
+                //Display render buffer
+                SDL_RenderPresent( renderer );
             }
         }
+        
         if ( start && scene != QUIT && scene != SOLO_MENU && scene != MULTI_MENU )
         {
             bool retryLoop = true;
@@ -364,15 +550,15 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
             {
                 clearScreen();
                 bgImage.render();
-                SDL_SetRenderTarget( renderer, foreground );
+                foreground.setAsTarget();
                 clearScreen();
                 int activeButton = renderRetryScreen( retryLoop, scene );
                 SDL_SetRenderTarget( renderer, NULL );
                 if (SDL_GetTicks() - mark < 500)
                 {
-                    SDL_SetTextureAlphaMod( foreground, 255 * (SDL_GetTicks() - mark) / 500 );
+                    foreground.setAlphaMod( 255 * (SDL_GetTicks() - mark) / 500 );
                 }
-                SDL_RenderCopy( renderer, foreground, NULL, NULL );
+                foreground.render();
                 SDL_RenderPresent( renderer );
                 while (SDL_PollEvent( &e ))
                 {
@@ -395,13 +581,11 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
         while ( scene != QUIT && !transIn )
         {
             bgImage.render();
-            SDL_RenderCopy( renderer, foreground, NULL, NULL );
+            foreground.render();
             renderTransition( transIn );
             SDL_RenderPresent( renderer );
         }
     }
-    SDL_DestroyTexture( foreground );
-    foreground = NULL;
 }
 
 int adjustmentButton( int x, int y, bool disableLeft, bool disableRight )
@@ -543,6 +727,12 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
                 text = "";
                 backActive = handleBackButton( mouse_x, mouse_y );
                 adjusted = false;
+                if ( changeMenu == INGAME )
+                {
+                    players = playerList.size();
+                    gameMode = mInfo.gameMode;
+                    mod[LEVEL] = mInfo.lvlSpd;
+                }
                 break;
             default:
                 scene = QUIT;
@@ -552,7 +742,14 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
         //Handles mouse events
         while ( SDL_PollEvent( &event ) > 0 )
         {
-            if ( event.type == SDL_QUIT ) {scene = QUIT; break;}
+            if ( event.type == SDL_QUIT )
+            { 
+                if ( scene == MULTI_LOBBY )
+                {
+                    isHost ? server.closeServer() : client.closeSocket();
+                }
+                scene = QUIT; break;
+            }
             else if ( changeMenu != scene ) continue;
             else if ( event.button.button == SDL_BUTTON_LEFT )
             {
@@ -588,9 +785,12 @@ void menuManager( int &scene, bool &transIn, int &players,  int &gameMode, int m
                         case MULTI_MENU:
                         case CREATE_SERVER:
                         case JOIN_SERVER:
-                            if ( backActive ) changeMenu = (scene != MULTI_MENU) ? MULTI_MENU : MAIN_MENU;
-                            else adjusted = 1;
-                            playSfx( SELECT );
+                            if ( backActive ) {changeMenu = (scene != MULTI_MENU) ? MULTI_MENU : MAIN_MENU; playSfx( SELECT );}
+                            else if ( activeButton > -1 )
+                            {
+                                adjusted = 1;
+                                playSfx( SELECT );
+                            }
                             break;
                         case MULTI_LOBBY:
                             if ( backActive )
@@ -674,9 +874,6 @@ int adjustmentSlider( int level, int x, int y, bool isHolding )
     const int SLIDER_UNIT = LENGTH_UNIT / 10;
     SDL_GetMouseState( &mouse_x, &mouse_y );
     Texture slider;
-    // const string SLIDER_BG = "src/media/img/bg_slider.png";
-    // const string SLIDER_FG = "src/media/img/fg_slider.png";
-    // const string SLIDER_HEAD = "src/media/img/slider_head.png";
     slider.loadFromFile(SLIDER_BG);
     slider.render( x - LENGTH_UNIT * 5, y - LENGTH_UNIT / 4, LENGTH_UNIT * 10, LENGTH_UNIT / 2 );
     slider.loadFromFile(SLIDER_FG);
@@ -1137,6 +1334,7 @@ void saveHighScore()
 
 void multiplayerManager( int scene, int &changeScene, int mouse_x, int mouse_y, int &activeButton, bool isClicked, SDL_Keycode key, string text )
 {
+    //Gets player name for displaying with other players
     if ( playerName == "" )
     {   
         static bool needEdit = false;
@@ -1148,7 +1346,8 @@ void multiplayerManager( int scene, int &changeScene, int mouse_x, int mouse_y, 
         bool done = renderTextInputBox( "ENTER YOUR NAME", "SET", tmpName, mouse_x, mouse_y, isClicked, key, text );
         if ( done ) {playerName = tmpName; tmpName = ""; SDL_StopTextInput(); needEdit = false;}
     }
-    else switch( scene )
+    //Other events if player already has a name
+    else if (changeScene == scene ) switch( scene )
     {
         case MULTI_MENU:
             renderMultiMenu( mouse_x, mouse_y, activeButton, isClicked );
@@ -1177,12 +1376,15 @@ void multiplayerManager( int scene, int &changeScene, int mouse_x, int mouse_y, 
             break;
         case CREATE_SERVER:
         {
+            //Flag to enable/disable text input capture of SDL event
             static bool needEdit = false;
             if ( !needEdit )
             {
                 needEdit = true;
                 SDL_StartTextInput();
             }
+
+            //Setting rules
             bool start = renderMatchSettings( mouse_x, mouse_y, isClicked, key, text  );
             int status;
             status = adjustmentButton( LENGTH_UNIT * 40, LENGTH_UNIT * 17, mInfo.maxPlayers == 2, mInfo.maxPlayers == 4 );
@@ -1199,6 +1401,7 @@ void multiplayerManager( int scene, int &changeScene, int mouse_x, int mouse_y, 
             status = adjustmentButton( LENGTH_UNIT * 40, LENGTH_UNIT * 26, mInfo.winCount == 1, mInfo.winCount == 10 );
             if ( isClicked ) mInfo.winCount += status;
 
+            //Handle create event
             if ( isClicked && start )
             {
                 changeScene = MULTI_LOBBY;
@@ -1211,37 +1414,52 @@ void multiplayerManager( int scene, int &changeScene, int mouse_x, int mouse_y, 
             break;
         case JOIN_SERVER:
         {
-            static int currPage = 0;
-            static int selected = -1;
             static bool findServer = false;
             if (!findServer)
             {
                 client.searchServer();
                 findServer = true;
             }
+            static int currPage = 0;
+            static int selected = -1;
+            
+            //Handles displaying & browsing server list
             renderJoinServer( mouse_x, mouse_y, activeButton, selected, currPage, isClicked, client.address, client.serverName );
             int totalPages = client.address.size() / 6 + ( client.address.size() % 6 == 0 ? 0 : 1);
             if ( totalPages == 0 ) totalPages = 1;
             renderText( "Page " + to_string( currPage + 1 ) + "/" + to_string( totalPages ), WINDOW_WIDTH / 2, LENGTH_UNIT * 27, false, CENTER, MIDDLE, 1 );
             int changePage = adjustmentButton( WINDOW_WIDTH / 2, LENGTH_UNIT * 27, currPage == 0, currPage == totalPages - 1 );
             if ( isClicked && changePage != 0 ) {currPage += changePage; selected = -1;}
+            
+            //Handles actions: Refresh the list or Join a server
             enum btnFn { REFRESH = 100, JOIN };
             if ( isClicked )
             {
-                if ( activeButton == REFRESH ) findServer = false;
-                else if ( activeButton == JOIN ) {changeScene = MULTI_LOBBY; isHost = false; client.connectToServer(selected); selected = -1; activeButton = -1;};
+                if ( activeButton == REFRESH ) {findServer = false; currPage = 0; selected = -1;}
+                else if ( activeButton == JOIN )
+                {
+                    findServer = false;
+                    changeScene = MULTI_LOBBY;
+                    isHost = false;
+                    client.connectToServer(selected);
+                    selected = -1;
+                    activeButton = -1;
+                    currPage = 0;
+                }
             }
         }
             break;
         case MULTI_LOBBY:
         {
+            //Count the loop cycle for some tasks need repeating after some intervals
             static int count = 0;
             renderLobby( mouse_x, mouse_y, activeButton );
-            if ( changeScene == scene)
+            if ( changeScene == scene )
             {
                 
                 if ( isHost )
                 {
+                    //Pings the clients to see if they still hold the connection
                     if ( count == 1000 )
                     {
                         server.pingClient();
@@ -1249,33 +1467,44 @@ void multiplayerManager( int scene, int &changeScene, int mouse_x, int mouse_y, 
                     }
                     if ( isClicked && activeButton > 0)
                     {
+                        // Start Button = 5
                         if ( activeButton == 5 )
                         {
                             for ( int i = 1; i < playerList.size(); i++ ) server.makeMsg( "start", i - 1 );
-                            server.sendToClient();
                             changeScene = INGAME;
                         }
                         else
                         {
-                            for ( int i = 1; i < playerList.size(); i++ )
-                            {
-                                if ( i == activeButton ) server.makeMsg( "kick", i - 1 );
-                                else server.makeMsg( to_string(activeButton) + "quit", i - 1 );
-                            }
-                            server.sendToClient();
+                            //Kick player i button = number i (in list: 1, 2, 3)
+                            // for ( int i = 1; i < playerList.size(); i++ )
+                            // {
+                            //     if ( i == activeButton ) continue;
+                            //     else server.makeMsg( to_string(activeButton) + "quit", i - 1 );
+                            // }
+                            server.makeMsg( "kick", activeButton - 1 );
                         }
+                        server.sendToClient();
                     }
-                    if (playerList.size() < mInfo.maxPlayers && count % 50 == 0) 
+                    //Broadcast server's info & accept join requests every interval
+                    if (playerList.size() < mInfo.maxPlayers && count % 25 == 0) 
                     {
                         server.broadcastInvitation();
                         server.acceptConnection();
                     }
+
+                    //Listens to clients actions: Ready/Cancel ready or quit.
                     server.receive();
                     Sleep(1);
-                    for ( int i = 1; i < playerList.size(); i++ )
+
+                    //Processes the actions & Echoes the players' msg to other players.
+                    for ( int i = playerList.size() - 1; i > 0; i-- )
                     {
                         string msg = server.getMsg( i - 1 );
-                        if (msg == "ready")
+                        if ( msg == "quit" )
+                        {
+                            server.closeClientSocket(i - 1);
+                        }
+                        else if (msg == "ready")
                         {
                             playerList[i].ready = true;
                             for ( int j = 0; j < server.getClientNum(); j++ )
@@ -1293,10 +1522,12 @@ void multiplayerManager( int scene, int &changeScene, int mouse_x, int mouse_y, 
                                 else server.makeMsg( to_string(i) + "nready", j );
                             }
                         }
+                        server.sendToClient();
                     }
                 }
-                else
+                else //If this is a client
                 {
+                    //Handles ready actions & sends the command to the server
                     if ( isClicked && activeButton != 0 )
                     {
                         if ( !playerList[client.getPosition()].ready )
@@ -1310,6 +1541,8 @@ void multiplayerManager( int scene, int &changeScene, int mouse_x, int mouse_y, 
                             playerList[client.getPosition()].ready = false;
                         }
                     }
+
+                    //Handles messages from the server
                     if ( client.isConnected() )
                     {
                         if (count == 1000)
@@ -1324,18 +1557,42 @@ void multiplayerManager( int scene, int &changeScene, int mouse_x, int mouse_y, 
                         else if ( msg == "kick" ) { client.closeSocket(); changeScene = MULTI_MENU; }
                         else if ( msg.length() > 0 )
                         {
-                            int pl = msg[0] - '0';
-                            if ( pl == 0 ) { client.closeSocket(); changeScene = MULTI_MENU; }
+                            if ( msg[0] == 'n' )
+                            {
+                                msg = msg.substr( 2 );
+                                playerInfo tmpPl = { "", "", false };
+                                for ( int i = 0; i < msg.length(); i++ )
+                                {
+                                    if ( msg[i] == delimiter )
+                                    {
+                                        tmpPl.address = msg.substr( i + 1 );
+                                        playerList.push_back( tmpPl );
+                                        break;
+                                    }
+                                    else tmpPl.name += msg[i];
+                                }
+                            }
                             else
                             {
-                                string cmd = msg.substr(1);
-                                if ( cmd == "quit" ) playerList.erase( playerList.begin() + pl );
-                                else if ( cmd == "ready" ) playerList[pl].ready = true;
-                                else if ( cmd == "nready" ) playerList[pl].ready = false;
+                                int pl = msg[0] - '0';
+                                if ( pl == 0 ) { client.closeSocket(); changeScene = MULTI_MENU; }
+                                else
+                                {
+                                    string cmd = msg.substr(1);
+                                    if ( cmd == "quit" ) {playerList.erase( playerList.begin() + pl ); client.changePosition(); }
+                                    else if ( cmd == "ready" ) playerList[pl].ready = true;
+                                    else if ( cmd == "nready" ) playerList[pl].ready = false;
+                                }
                             }
                         }
                     }
+                    else
+                    {
+                        client.closeSocket();
+                        changeScene = MULTI_MENU;
+                    }
                 }
+                //Done loop cycle.
                 count++;
             }
         }

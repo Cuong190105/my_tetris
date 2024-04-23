@@ -15,7 +15,7 @@ string playerName = "";
 string tmpName = "";
 bool isHost = false;
 const char delimiter = '\x1F';
-const char endMsg = '\x1D';
+const char endMsg = '\x1E';
 struct matchInfo mInfo;
 
 vector<playerInfo> playerList;
@@ -40,11 +40,6 @@ Server::~Server() { closeServer(); }
 
 void Server::closeServer()
 {
-    for (int i = 0; i < clientSocket.size(); i++)
-    {
-        makeMsg("0quit", i);
-    }
-    sendToClient();
     if ( result != NULL )
     {
         freeaddrinfo(result);
@@ -53,13 +48,14 @@ void Server::closeServer()
     closesocket(ListenSocket);
     for (int i = 0; i < clientSocket.size(); i++)
     {
-        shutdown(clientSocket[i], SD_BOTH);
-        closesocket(clientSocket[i]);
+        makeMsg("0quit", i);
+    }
+    sendToClient();
+    for (int i = clientSocket.size() - 1; i > -1; i--)
+    {
+        closeClientSocket(i);
     }
     WSACleanup();
-    msgToEachClient.clear();
-    clientMsg.clear();
-    playerList.clear();
 }
 
 SOCKET Server::getClientSocket( int client )
@@ -204,15 +200,17 @@ bool Server::acceptConnection()
         getpeername(ClientSocket, (sockaddr*)&addr, &len);
         clientSocket.push_back(ClientSocket);
 
-        // int buf = 16;
-        // char tmp[buf];
-        // memset(&tmp, '\0', buf);
-        // int info = recv(ClientSocket, tmp, buf, 0);
-
-        //Receive new client info: Name & address, then push into playerList
+        //Receives new client info: Name & address, then pushes into playerList & notifys other client
         receive();
         string tmp = getMsg( getClientNum() - 1 );
-
+        cout << "client num: " << getClientNum() << endl;
+        for ( int i = 0; i < getClientNum() - 1; i++ )
+        {
+            //n is for "new player joined"
+            string msg = "n" + delimiter + tmp + delimiter + inet_ntoa(addr.sin_addr);
+            makeMsg( msg, i );
+            cout << "notification: " << msg << endl;
+        }
         playerList.push_back(playerInfo{tmp, inet_ntoa(addr.sin_addr), false});
 
         //Send to new client server's info: match settings, other players' info.
@@ -232,8 +230,9 @@ void Server::sendToClient()
 {
     for (int i = clientSocket.size() - 1; i > -1; i--)
     {
-        if ( msgToEachClient[i].length() != 0 )
+        if ( msgToEachClient[i].length() > 1 )
         {
+            cout << "Sent to " << i << ": " << msgToEachClient[i] << endl; 
             int info = send( clientSocket[i], msgToEachClient[i].c_str(), msgToEachClient[i].length(), 0 );
             if ( info == SOCKET_ERROR )
                 closeClientSocket(i);
@@ -249,26 +248,17 @@ void Server::receive()
         char tmp[BUFFER_SIZE];
         memset(&tmp, 0, BUFFER_SIZE);
         int info = recv( clientSocket[i], tmp, BUFFER_SIZE, 0 );
-        if ( info > 0 && strcmp(tmp, "ping\x1E") != 0 )
+        const string pingCmd = "ping" + endMsg;
+        if ( info > 0 && strcmp(tmp, pingCmd.c_str()) != 0 )
         {
-            clientMsg[i] = tmp;
+            clientMsg[i] += tmp;
+            cout << "received: " << tmp << endl;
         }
         else if (info == SOCKET_ERROR && WSAGetLastError() != WSAEWOULDBLOCK )
         {
             cout << WSAGetLastError() << " " << "Socket closed" << endl;
             closeClientSocket(i);
             continue;
-        }
-    }
-
-    // Check if a player send quit command
-    for (int i = clientSocket.size() - 1; i > -1; i--)
-    {
-        if ( clientMsg[i] == "quit" )
-        {
-            char tmp[] = "4";
-            send(clientSocket[i], tmp, strlen(tmp), 0);
-            closeClientSocket(i);
         }
     }
 }
@@ -309,11 +299,11 @@ void Server::closeClientSocket( int client )
     //Notify other players about the disconnected player
     for (int i = 0; i < playerList.size(); i++)
     {
-        makeMsg(to_string(client) + "quit", i);
+        makeMsg(to_string(client + 1) + "quit", i);
     }
     sendToClient();
-    clientMsg.push_back("");
     msgToEachClient.push_back("");
+    clientMsg.push_back("");
 }
 
 Client::Client()
@@ -338,7 +328,7 @@ void Client::connectToServer( int serverNum )
     svAddr.sin_port = htons(stoi(DEFAULT_PORT));
     connectSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP );
     if (connectSocket == INVALID_SOCKET) { closeSocket(); return; }
-    if (connect(connectSocket, (sockaddr*)&svAddr, sizeof(svAddr)) == SOCKET_ERROR) {closeSocket(); return;}
+    if (connect(connectSocket, (sockaddr*)&svAddr, sizeof(svAddr)) == SOCKET_ERROR) {closeSocket(); cout << "err: failed to connect" << endl; return;}
     unsigned long b = 1; ioctlsocket(connectSocket, FIONBIO, &b);
     connected = true;
     
@@ -352,6 +342,7 @@ void Client::connectToServer( int serverNum )
         tmp = getMsg();
         Sleep(5);
     }
+    cout << "info: " << tmp << endl;
     int part = 0;
     vector<string> info(17, "");
     for (int i = 0; i < tmp.length(); i++)
@@ -369,7 +360,9 @@ void Client::connectToServer( int serverNum )
 
 void Client::sendToServer(string sendString)
 {
-    int info = send( connectSocket, (sendString + endMsg).c_str(), sendString.length(), 0 );
+    string sendMsg = sendString + endMsg;
+    cout << "Sent: " << sendMsg << endl;
+    int info = send( connectSocket, sendMsg.c_str(), sendMsg.length(), 0 );
     if (info == SOCKET_ERROR)
     {
         closeSocket();
@@ -444,14 +437,16 @@ void Client::receive()
     char tmp[BUFFER_SIZE];
     memset(&tmp, 0, BUFFER_SIZE);
     int info = recv( connectSocket, tmp, BUFFER_SIZE, 0 );
+    const string pingCmd = "ping" + endMsg;
     if ( info == SOCKET_ERROR && WSAGetLastError() != WSAEWOULDBLOCK )
     {
         closesocket(connectSocket);
         WSACleanup();
     }
-    else if ( strcmp(tmp, "ping\x1E") != 0 )
+    else if ( info > 1 && strcmp(tmp, pingCmd.c_str()) != 0 )
     {
         recvMsg += tmp;
+        cout << "received: " << tmp << endl;
     }
 }
 
@@ -479,16 +474,20 @@ void Client::pingServer()
 
 void Client::closeSocket()
 {
-    connected = false;
-    playerList.clear();
-    sendToServer( "quit" );
-    shutdown( connectSocket, SD_BOTH );
-    closesocket(connectSocket);
-    WSACleanup();
+    if (connected)
+    {
+        connected = false;
+        playerList.clear();
+        sendToServer( "quit" );
+        shutdown( connectSocket, SD_BOTH );
+        closesocket(connectSocket);
+        WSACleanup();
+    }
 }
 
 int Client::getPosition() { return position; }
 
+void Client::changePosition() { position --; }
 
 //Code for running this file as a separate app for testing
 // atomic<bool> stop;

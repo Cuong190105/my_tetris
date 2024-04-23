@@ -27,6 +27,8 @@ struct playerInfo
 extern vector<playerInfo> playerList;
 
 extern bool isHost;
+extern const char delimiter;
+extern const char endMsg;
 
 extern const int MAX_CONNECTIONS;
 const int BUFFER_SIZE = 1024;
@@ -120,6 +122,9 @@ class Client
 
         //Returns the position of this player in the lobby
         int getPosition();
+
+        //Move the position of this player once in the lobby when there is a player leaves the server
+        void changePosition();
 
         //Sends messages to the server
         void sendToServer(string sendString);

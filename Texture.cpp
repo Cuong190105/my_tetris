@@ -153,3 +153,17 @@ int Texture::getHeight()
 {
     return height;
 }
+
+void Texture::createTargetTexture()
+{
+    free();
+    texture = SDL_CreateTexture( renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, WINDOW_WIDTH, WINDOW_HEIGHT );
+    SDL_SetTextureBlendMode( texture, SDL_BLENDMODE_BLEND );
+}
+
+void Texture::setAsTarget()
+{
+    SDL_SetRenderTarget( renderer, texture );
+    SDL_SetRenderDrawColor( renderer, 0, 0, 0, 0 );
+    SDL_RenderClear( renderer );
+}

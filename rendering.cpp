@@ -101,9 +101,9 @@ void renderStatistics( const Player& player, Uint32 startMark, int countDownMark
 bool displayCountdown( int x, int y, int w, int h, Uint32 startMark)
 {
     static bool cdSound = false;
-    if ( !cdSound ) { cdSound = true; playSfx(COUNTDOWN); }
-    if ( SDL_GetTicks() - startMark < 3000)
+    if ( SDL_GetTicks() - startMark <= 3000)
     {
+        if ( !cdSound ) { cdSound = true; playSfx(COUNTDOWN); }
         renderText( to_string( 3 - (SDL_GetTicks() - startMark) / 1000 ), x + w / 2, y + h / 2, true, CENTER, MIDDLE, 3, SDL_Color { 255, 255, 255 } );
         return false;
     }

@@ -58,6 +58,12 @@ class Texture
 
         //Returns height
         int getHeight();
+
+        //Creates a blank texture as render target later
+        void createTargetTexture();
+
+        //Sets this texture as render target
+        void setAsTarget();
 };
 
 enum gameScene {MAIN_MENU, SOLO_MENU, MULTI_MENU, MAIN_MENU_SETTINGS, INGAME_SETTINGS, QUIT, SET_RULES, CREATE_SERVER, JOIN_SERVER, MULTI_LOBBY, INGAME, PAUSE};
