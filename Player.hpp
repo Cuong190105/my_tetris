@@ -4,7 +4,7 @@
 #include "Texture.hpp"
 #include <SDL.h>
 
-enum KeyboardFunction { K_LEFT, K_RIGHT, K_DOWN };
+enum KeyboardFunction { K_LEFT, K_RIGHT, K_DOWN, K_SPACE, K_LROTATE, K_RROTATE, K_SWAP, K_ESC };
 
 class Player
 {
@@ -18,7 +18,7 @@ class Player
         bool holdLock;
         int score, line, level;
         int mode;
-
+        bool activePlayer;
         //Turn counter in mystery mode (A turn is the time a piece is spawned then locked onto the stack)
         int turn;
 
@@ -35,7 +35,7 @@ class Player
         //Stores the interval between each gravity's pull        
         float pullInterval;
 
-        pair<int, int> keyRepeatState[3];
+        pair<int, int> keyRepeatState[8];
         /**
          * Marks the triggering point of autolock timer.
          * Timer resets when doing a move other than dropping it lower than the lowest reached row
@@ -75,7 +75,7 @@ class Player
         //Stores player's status
         bool gameOver;
     public:
-        Player( int _level, int _mode, int _x, int _y );
+        Player( int _level, int _mode, int _x, int _y, bool isActive = true );
         ~Player();
 
         //Returns this player's score
@@ -122,7 +122,7 @@ class Player
         int getGhostRow() const;
 
         //Pulls new tetromino from a shared queue (useful in multiplayer mode)
-        void pullNewTetromino( const vector<Tetromino>& Tqueue );
+        void pullNewTetromino( const vector<Tetromino>& Tqueue, int &pos );
 
         /**
          * Checks if this tetromino collides with any other element (border, another active cell) of the playfield
@@ -208,7 +208,7 @@ class Player
 
 enum bonusType { MINI = 1, T_SPIN = 2, B2B = 4, ALLCLEAR = 8, TETRIS = 16 };
 enum soloMode { CLASSIC, SPRINT, BLITZ, MASTER, MYSTERY };
-enum multiMode { SCORE = MYSTERY + 1, ATTACK, MYSTERY_ATTACK };
+enum multiMode { SCORE = MYSTERY + 1, ATTACK };
 enum mysteryType { UPSIDE_DOWN, UNSTABLE, BOMB, GIANT, ADD_GARBAGE, CORRUPTED, HORIZONTAL_SHIFT, EVENT_NUMBER };
 enum modType { LEVEL, LINECAP, TIME, ACTIVATE_MYSTERY };
 

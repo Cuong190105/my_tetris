@@ -6,7 +6,7 @@ using namespace std;
 
 enum Action {ROTATE, MOVE_LR, DROP};
 
-Player::Player( int _level, int _mode, int _x, int _y )
+Player::Player( int _level, int _mode, int _x, int _y, bool isActive )
 {
     pb = PlayBoard();
     tetr = Tetromino();
@@ -29,6 +29,7 @@ Player::Player( int _level, int _mode, int _x, int _y )
     delaySpawnMark = SDL_GetTicks();
     turn = 0;
     mysteryEvent = -1;
+    activePlayer = isActive;
 }
 
 Player::~Player() {}
@@ -89,9 +90,25 @@ int Player::getGhostRow() const
     return -1;
 }
 
-void Player::pullNewTetromino( const vector<Tetromino> &Tqueue )
+void Player::pullNewTetromino( const vector<Tetromino> &Tqueue, int &pos )
 {
-    tetr = Tqueue[0];
+    if ( !activePlayer && tetr.getType() != 0 ) dropPiece( true );
+    if ( mode >= SCORE && activePlayer )
+    {
+        if ( isHost )
+        {
+            for ( int i = 0; i < server.getClientNum(); i++ )
+            {
+                server.makeMsg( "0pull", i );
+            }
+            server.sendToClient();
+        }
+        else
+        {
+            client.sendToServer( to_string(client.getPosition()) + "pull" );
+        }
+    }
+    tetr = Tqueue[pos++];
     pullMark = SDL_GetTicks();
     movesBeforeLock = 0;
     lowestRow = tetr.getRow();
@@ -120,6 +137,7 @@ void Player::lockTetromino()
     turn ++;
     int additionDelay = 0;
     playSfx( LOCK );
+    holdLock = false;
     if ( tetr.getType() == BOMB_PIECE )
     {
         int cnt = 0;
@@ -170,22 +188,43 @@ void Player::movePieceHorizontally( bool right )
         movesBeforeLock++;
         lockMark = SDL_GetTicks();
         playSfx( MOVE );
+        if ( mode >= SCORE && activePlayer )
+        {
+            if (!isHost) client.sendToServer( to_string(client.getPosition()) + (right ? "rmov" : "lmov") );
+            else
+            {
+                for ( int i = 0; i < server.getClientNum(); i++ )
+                {
+                    server.makeMsg( to_string(0) + (right ? "rmov" : "lmov"), i );
+                }
+                server.sendToClient();
+            } 
+        }
     }
 }
 
 void Player::dropPiece( bool isHardDrop, bool isGravityPull )
 {
-    bool pieceLocked = false;
     if ( isHardDrop )
     {
         //Hard drop always locks the current piece
-        pieceLocked = true;
         score += (tetr.getRow() - getGhostRow()) * 2;
         if ( getGhostRow() != tetr.getRow() ) lastMove = DROP;
         tetr.updateRow( getGhostRow() );
         lockTetromino();
-        holdLock = false;
         playSfx( HARDDROP );
+        if ( mode >= SCORE && activePlayer )
+        {
+            if (!isHost) client.sendToServer( to_string(client.getPosition()) + "hdrp" );
+            else
+            {
+                for ( int i = 0; i < server.getClientNum(); i++ )
+                {
+                    server.makeMsg( "0hdrp", i );
+                }
+                server.sendToClient();
+            } 
+        }
     }
     else
     {
@@ -204,7 +243,22 @@ void Player::dropPiece( bool isHardDrop, bool isGravityPull )
                 movesBeforeLock = 0;
                 if ( checkCollision( tetr, -1 ) ) lockMark = SDL_GetTicks();
             }
-            if ( !isGravityPull) playSfx( MOVE );
+            if ( !isGravityPull)
+            {
+                playSfx( MOVE );
+                if ( mode >= SCORE && activePlayer )
+                {
+                    if (!isHost) client.sendToServer( to_string(client.getPosition()) + "sdrp" );
+                    else
+                    {
+                        for ( int i = 0; i < server.getClientNum(); i++ )
+                        {
+                            server.makeMsg( "0sdrp", i );
+                        }
+                        server.sendToClient();
+                    } 
+                }
+            }
         }
         else lockDelayHandler();
     }
@@ -332,6 +386,18 @@ void Player::rotatePiece( bool rotateClockwise )
             lastMove = ROTATE;
             lockMark = SDL_GetTicks();
             movesBeforeLock++;
+            if ( mode >= SCORE && activePlayer )
+            {
+                if (!isHost) client.sendToServer( to_string(client.getPosition()) + (rotateClockwise ? "rrot" : "lrot") );
+                else
+                {
+                    for ( int i = 0; i < server.getClientNum(); i++ )
+                    {
+                        server.makeMsg( to_string(0) + (rotateClockwise ? "rrot" : "lrot"), i );
+                    }
+                    server.sendToClient();
+                } 
+            }
             return;
         }
     }
@@ -339,28 +405,41 @@ void Player::rotatePiece( bool rotateClockwise )
 
 void Player::lockDelayHandler()
 {
-    if ( movesBeforeLock >= 15 || SDL_GetTicks() - lockMark > lockDelay ) dropPiece( true );
+    if ( movesBeforeLock >= 15 || SDL_GetTicks() - lockMark > lockDelay ) lockTetromino();
 }
 
 void Player::gravityPull()
 {
+    bool change = false;
     if ( tetr.getType() != BOMB_PIECE && checkCollision( tetr, -1 ) )
     {
         lockDelayHandler();
+        change = true;
     }
     else
     {
-        if ( (tetr.getType() == I_PIECE && tetr.getRow() == START_ROW - 1) || tetr.getRow() == START_ROW ) dropPiece( false, true );
+        if ( activePlayer && ((tetr.getType() == I_PIECE && tetr.getRow() == START_ROW - 1) || tetr.getRow() == START_ROW) ) 
+            {dropPiece( false, true ); change = true;}
         int rowDrop = 10 / pullInterval + 1;
         int newPullInterval = pullInterval * rowDrop;
-        if ( ( SDL_GetTicks() - pullMark ) > newPullInterval )
+        if ( !activePlayer || ( SDL_GetTicks() - pullMark ) > newPullInterval )
         {
-            for ( int i = 0; i < rowDrop; i++)
-            {
-                dropPiece( false, true );
-            }
+            change = true;
+            for ( int i = 0; i < rowDrop; i++) dropPiece( false, true );
             pullMark = SDL_GetTicks();
         }
+    }
+    if ( change && mode >= SCORE && activePlayer )
+    {
+        if (!isHost) client.sendToServer( to_string(client.getPosition()) + "gpul" );
+        else
+        {
+            for ( int i = 0; i < server.getClientNum(); i++ )
+            {
+                server.makeMsg( "0gpul", i );
+            }
+            server.sendToClient();
+        } 
     }
 }
 
@@ -670,6 +749,18 @@ void Player::swapHoldPiece()
 {
     if ( !holdLock )
     {
+        if ( mode >= SCORE && activePlayer )
+        {
+            if (!isHost) client.sendToServer( to_string(client.getPosition()) + "swap" );
+            else
+            {
+                for ( int i = 0; i < server.getClientNum(); i++ )
+                {
+                    server.makeMsg( "0swap", i );
+                }
+                server.sendToClient();
+            } 
+        }
         Tetromino tmp = hold;
         hold = tetr;
         hold.updateCol( START_COL - (hold.getContainerSize() > 4 ? hold.getContainerSize() / 2 - 1 : 0) );
@@ -872,15 +963,13 @@ void Player::ingameProgress( const vector<Tetromino> &Tqueue, int &queuePosition
         {
             if ( (int)SDL_GetTicks() - (int)delaySpawnMark > SPAWN_DELAY )
             {
-                pullNewTetromino( Tqueue );
-                queuePosition++;
+                pullNewTetromino( Tqueue, queuePosition );
                 if ( tetr.getType() != BOMB_PIECE && checkCollision( tetr ) ) gameOver = true;
             }
         }
         if ( tetr.getType() != 0 ) gravityPull();
 
-        if ( !gameOver ) handlingKeyPress( gameOver, scene );
-
+        if ( !gameOver && activePlayer ) handlingKeyPress( gameOver, scene );
     }
 }
 
@@ -894,7 +983,7 @@ void Player::handlingKeyPress( bool &gameOver, int &scene )
 
     //Handle events
     SDL_Event event;
-    while ( SDL_PollEvent(&event) != 0 ) 
+    while ( SDL_PollEvent(&event) > 0 ) 
     {
         //Quits game event
         if (  event.type == SDL_QUIT )
@@ -903,44 +992,64 @@ void Player::handlingKeyPress( bool &gameOver, int &scene )
             scene = QUIT;
             break;
         }
-        //Handles non-repeat keys
-        if ( tetr.getType() != 0 && event.type == SDL_KEYDOWN && event.key.repeat == 0 )
-        {
-            SDL_Scancode key = event.key.keysym.scancode;
-            if ( key == keyScanCode[PRIMARY_HARD_DROP] || key == keyScanCode[SECONDARY_HARD_DROP] )
-            {
-                if ( mode == MYSTERY && tetr.getType() == BOMB_PIECE )
-                {
-                    lockTetromino();
-                }
-                else dropPiece( true );
-            }
-            else if ( key == keyScanCode[PRIMARY_RIGHT_ROTATE] || key == keyScanCode[SECONDARY_RIGHT_ROTATE] )
-            {
-                rotatePiece( true );
-            }
-            else if ( key == keyScanCode[PRIMARY_LEFT_ROTATE] || key == keyScanCode[SECONDARY_LEFT_ROTATE] )
-            {
-                rotatePiece( false );
-            }
-            else if ( key == keyScanCode[PRIMARY_SWAP_HOLD] || key == keyScanCode[SECONDARY_SWAP_HOLD] )
-            {
-                swapHoldPiece();
-            }
-            else if ( key == SDL_SCANCODE_ESCAPE )
-            {
-                if ( mode <= MYSTERY ) scene = PAUSE;
-            }
-        }
     }
 
     const Uint8 *keystate = SDL_GetKeyboardState(NULL);
 
     //KEY STATES:
     //0: Unpressed
-    //1: Pressed once, waiting for DAS
+    //1: Pressed once, waiting for DAS (or KEYUP event if the key is non-repeat)
     //2: Auto-repeat
     //3: Hold for handling input of moving in the opposite direction.
+    if ( (keystate[keyScanCode[PRIMARY_HARD_DROP]] || keystate[keyScanCode[SECONDARY_HARD_DROP]]) )
+    {
+        if ( keyRepeatState[K_SPACE].first == 0 )
+        {
+            if ( mode == MYSTERY && tetr.getType() == BOMB_PIECE )
+            {
+                lockTetromino();
+            }
+            else dropPiece( true );
+            keyRepeatState[K_SPACE].first = 1;
+        }
+    } else keyRepeatState[K_SPACE].first = 0;
+
+    if ( (keystate[keyScanCode[PRIMARY_RIGHT_ROTATE]] || keystate[keyScanCode[SECONDARY_RIGHT_ROTATE]]) )
+    {
+        if (keyRepeatState[K_RROTATE].first == 0)
+        {
+            rotatePiece( true );
+            keyRepeatState[K_RROTATE].first = 1;
+        }
+    } else keyRepeatState[K_RROTATE].first = 0;
+
+    if ( (keystate[keyScanCode[PRIMARY_LEFT_ROTATE]] || keystate[keyScanCode[SECONDARY_LEFT_ROTATE]]) )
+    {
+        if ( keyRepeatState[K_LROTATE].first == 0 )
+        {
+            rotatePiece( false );
+            keyRepeatState[K_LROTATE].first = 1;
+        }
+    } else keyRepeatState[K_LROTATE].first = 0;
+
+    if ( (keystate[keyScanCode[PRIMARY_SWAP_HOLD]] || keystate[keyScanCode[SECONDARY_SWAP_HOLD]]) )
+    {
+        if ( keyRepeatState[K_SWAP].first == 0 )
+        {
+            swapHoldPiece();
+            keyRepeatState[K_SWAP].first = 1;
+        }
+    } else keyRepeatState[K_SWAP].first = 0;
+
+    if ( keystate[SDL_SCANCODE_ESCAPE] )
+    {
+        if ( mode <= MYSTERY && keyRepeatState[K_ESC].first == 0 )
+        {
+            scene = PAUSE;
+            keyRepeatState[K_ESC].first = 1;
+        }
+    } else keyRepeatState[K_ESC].first = 0;
+
     if ( keystate[keyScanCode[PRIMARY_MOVE_LEFT]] || keystate[keyScanCode[SECONDARY_MOVE_LEFT]] ) 
     {
         if ( keyRepeatState[K_LEFT].first == 0 )

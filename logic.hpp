@@ -12,7 +12,7 @@ void handlePauseMenu( int &activeButton, int &mouse_x, int &mouse_y );
 void gameHandler( int players, int gameMode, int mod[3], int &scene, bool &transIn );
 
 //Creates tetrominos & push it into the queue if needed
-void generateTetromino( vector<int> &Tqueue );
+void generateTetromino( vector<Tetromino> &Tqueue, bool forceAdd = false );
 
 //===================================HIGH SCORE MANIPULATION================================
 
@@ -36,6 +36,7 @@ void settingRules( int gameMode, int &activeButton, bool &adjusted, int mod[4] )
 //===================================MULTIPLAYER MANIPULATION================================
 void multiplayerManager( int scene, int &changeScene, int mouse_x, int mouse_y, int &activeButton, bool isClicked, SDL_Keycode key, string text = "" );
 
+void processOpponentsControl( vector<Tetromino> &Tqueue, vector<int> &queuePosition, vector<Player> &player, int &survivors, bool &anyEliminated );
 //=======================================SETTINGS============================================
 
 //Manages game settings

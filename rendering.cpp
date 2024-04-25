@@ -327,7 +327,7 @@ bool handleBackButton( int mouse_x, int mouse_y )
 }
 
 
-const string gameModeName[] = { "CLASSIC", "SPRINT", "BLITZ", "MASTER", "MYSTERY", "SCORE COMPETITION", "ATTACK", "MYSTERY ATTACK" };
+const string gameModeName[] = { "CLASSIC", "SPRINT", "BLITZ", "MASTER", "MYSTERY", "SCORE COMPETITION", "ATTACK" };
 SDL_Rect menuButtonBox[SOLO_MENU_BUTTONS];
 int GAMEMODE_MENU_BUTTON_X;
 int GAMEMODE_MENU_FIRST_BUTTON_Y;
@@ -593,11 +593,11 @@ void renderLobby( int mouseX, int mouseY, int &activeButton )
     SDL_SetRenderDrawColor( renderer, 0, 0, 0, 225 );
     SDL_RenderFillRect( renderer, &info );
     renderText( "INFO", LENGTH_UNIT * 18, LENGTH_UNIT * 10, true, LEFT, BOTTOM );
-    renderText( "Servers' address: " + playerList[0].address, LENGTH_UNIT * 18, LENGTH_UNIT * 11.5, false, LEFT, MIDDLE );
-    renderText( "Game mode: " + gameModeName[mInfo.gameMode], LENGTH_UNIT * 18, LENGTH_UNIT * 13, false, LEFT, MIDDLE );
-    renderText( "Max players: " + to_string( mInfo.maxPlayers ), LENGTH_UNIT * 18, LENGTH_UNIT * 14.5, false, LEFT, MIDDLE );
-    renderText( "Initial level speed: " + to_string( mInfo.lvlSpd ), LENGTH_UNIT * 18, LENGTH_UNIT * 16, false, LEFT, MIDDLE );
-    renderText( "Win count: " + to_string( mInfo.winCount ), LENGTH_UNIT * 18, LENGTH_UNIT * 17.5, false, LEFT, MIDDLE );
+    renderText( "Servers' address: " + playerList[0].address, LENGTH_UNIT * 18, LENGTH_UNIT * 11, false, LEFT, MIDDLE );
+    renderText( "Game mode: " + gameModeName[mInfo.gameMode], LENGTH_UNIT * 18, LENGTH_UNIT * 12.5, false, LEFT, MIDDLE );
+    renderText( "Max players: " + to_string( mInfo.maxPlayers ), LENGTH_UNIT * 18, LENGTH_UNIT * 14, false, LEFT, MIDDLE );
+    renderText( "Initial level speed: " + to_string( mInfo.lvlSpd ), LENGTH_UNIT * 18, LENGTH_UNIT * 15.5, false, LEFT, MIDDLE );
+    renderText( "Win count: " + to_string( mInfo.winCount ), LENGTH_UNIT * 18, LENGTH_UNIT * 17, false, LEFT, MIDDLE );
 
     SDL_Rect playerListBoard { LENGTH_UNIT * 16, LENGTH_UNIT * 19, LENGTH_UNIT * 32, LENGTH_UNIT * 10 };
     SDL_SetRenderDrawColor( renderer, 0, 0, 0, 225 );
@@ -612,7 +612,7 @@ void renderLobby( int mouseX, int mouseY, int &activeButton )
         SDL_RenderFillRect( renderer, &row );
         if ( i < playerList.size() )
         {
-            renderText( playerList[i].name + (i == 0 ? " (Host)" : ""), LENGTH_UNIT * 18, LENGTH_UNIT * ( 23 + i * 1.5 ), false, LEFT, CENTER );
+            renderText( playerList[i].name + (i == 0 ? " (Host)" : ""), LENGTH_UNIT * 18, LENGTH_UNIT * ( 23 + i * 1.5 ), false, LEFT, CENTER, 1, ((isHost && i == 0) || (!isHost && i == client.getPosition())) ? SDL_Color {252, 236, 3} : SDL_Color {255, 255, 255} );
             if ( i != 0 )
             {
                 if (playerList[i].ready)

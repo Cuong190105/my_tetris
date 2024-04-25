@@ -8,20 +8,25 @@ using namespace std;
 
 enum MBState { PRESSED = -1, INITIAL, RELEASED };
 
-void generateTetromino( vector<Tetromino> &Tqueue )
+void generateTetromino( vector<Tetromino> &Tqueue, bool forceAdd )
 {
     //7-bag randomization (Takes all 7 types of tetromino, shuffles them, then pushes them into the queue).
     //This method guarantees every unique pieces will be spawn within 7 turns, minimizes the missing/repetition
     //of a piece in some cases.
-    while ( Tqueue.size() <= 7 ) {
+    if ( Tqueue.size() <= 7 || forceAdd ) {
         vector<int> v { I_PIECE, J_PIECE, L_PIECE, O_PIECE, S_PIECE, Z_PIECE, T_PIECE };
         random_device rd;
         mt19937 g(rd());
         shuffle(v.begin(), v.end(), g);
         for ( int i = 0; i < 7; i++ )
         {
+            if (forceAdd) for (int j = 0; j < server.getClientNum(); j++)
+            {
+                server.makeMsg("T" + to_string(v[i]), j);
+            }
             Tqueue.push_back( Tetromino( v[i] ) );
         }
+        if (forceAdd) server.sendToClient();
     }
 }
 
@@ -59,6 +64,130 @@ void handlePauseMenu( int &activeButton, int &mouse_x, int &mouse_y )
     }
 }
 
+void processOpponentsControl( vector<Tetromino> &Tqueue, vector<int> &queuePosition, vector<Player> &player, int &survivors, bool &anyEliminated )
+{
+    
+    int minPos = queuePosition[0], maxPos = queuePosition[0];
+    for ( int i = 1; i < queuePosition.size(); i++ )
+    {
+        if ( queuePosition[i] < minPos ) minPos = queuePosition[i];
+        else if ( queuePosition[i] > maxPos ) maxPos = queuePosition[i];
+    }
+    
+    if ( minPos >= 7 )
+    {
+        for ( int i = 0; i < queuePosition.size(); i++) queuePosition[i] -= 7;
+        for ( int i = 0; i < 7; i++ ) Tqueue.erase( Tqueue.begin() );
+    }
+    
+    if (isHost)
+    {
+        if ( Tqueue.size() - maxPos <= 7 )
+        {
+            generateTetromino( Tqueue, true );
+        }
+        
+        server.receive();
+        Sleep(5);
+        
+        vector<int> disconnectedList;
+        for( int i = 0; i < server.getClientNum(); i++ )
+        {
+            string msg = server.getMsg( i );
+            
+            while ( msg.length() > 0 )
+            {
+                for ( int j = 0; j < server.getClientNum(); j++ )
+                {
+                    if ( j != i ) server.makeMsg( msg, j );
+                }
+
+                server.sendToClient();
+                string cmd = msg.substr(1, 4);
+                //The msg is actually "quit\x1F" but we slice the string from index 1 to 5
+                if ( cmd == ("uit" + endMsg))
+                {
+                    server.closeClientSocket( i );
+                    queuePosition.erase( queuePosition.begin() + i );
+                    player.erase( player.begin() + i + 1 );
+                    survivors--; anyEliminated = true; break;
+                }
+                //gpul == gravity pull
+                else if ( cmd == "gpul" ) player[msg[0] - '0'].gravityPull();
+                //sdrp == soft drop
+                else if ( cmd == "sdrp" ) player[msg[0] - '0'].dropPiece( false );
+                //hdrp == hard drop
+                else if ( cmd == "hdrp" ) player[msg[0] - '0'].dropPiece( true );
+                //lmov = left move
+                else if ( cmd == "lmov" ) player[msg[0] - '0'].movePieceHorizontally( false );
+                //rmov = right move
+                else if ( cmd == "rmov" ) player[msg[0] - '0'].movePieceHorizontally( true );
+                //lrot = left(counterclockwise) rotate
+                else if ( cmd == "lrot" ) player[msg[0] - '0'].rotatePiece( false );
+                //rrot = right(clockwise) rotate
+                else if ( cmd == "rrot" ) player[msg[0] - '0'].rotatePiece( true );
+                //swap = swap hold piece
+                else if ( cmd == "swap" ) player[msg[0] - '0'].swapHoldPiece();
+                //pull = pull new piece
+                else if ( cmd == "pull" ) player[msg[0] - '0'].pullNewTetromino( Tqueue, queuePosition[msg[0] - '0'] ); 
+
+                if (msg[0] - '0' > i + 1) disconnectedList.push_back(i + 1);
+                msg = server.getMsg( i );
+            }
+        }
+        for (int i : disconnectedList)
+        {
+            queuePosition.erase(queuePosition.begin() + i);
+            player.erase( player.begin() + i );
+            survivors --; anyEliminated = true;
+        }
+        
+    }
+    else
+    {
+        client.receive();
+        Sleep(5);
+        if ( !client.isConnected() ) return;
+        string msg = client.getMsg();
+        while ( msg.length() > 0 || Tqueue.size() == 0 )
+        {
+            if ( msg[0] == 'T' )
+            {
+                Tqueue.push_back( Tetromino(msg[1] - '0') );
+            }
+            else if ( msg.length() >= 5 )
+            {
+                string cmd = msg.substr(1, 4);
+                if ( cmd == "quit" )
+                {
+                    if (msg[0] == '0')
+                    {
+                        client.closeSocket();
+                        playerList.clear();
+                    }
+                    else
+                    {
+                        player.erase( player.begin() + (msg[0] - '0') );
+                        playerList.erase( playerList.begin() + (msg[0] - '0') );
+                        if ( msg[0] - '0' < client.getPosition() ) client.changePosition();
+                        survivors --; anyEliminated = true;
+                    }
+                }
+                else if ( cmd == "gpul" ) player[msg[0] - '0'].gravityPull();
+                else if ( cmd == "sdrp" ) player[msg[0] - '0'].dropPiece( false );
+                else if ( cmd == "hdrp" ) player[msg[0] - '0'].dropPiece( true );
+                else if ( cmd == "lmov" ) player[msg[0] - '0'].movePieceHorizontally( false );
+                else if ( cmd == "rmov" ) player[msg[0] - '0'].movePieceHorizontally( true );
+                else if ( cmd == "lrot" ) player[msg[0] - '0'].rotatePiece( false );
+                else if ( cmd == "rrot" ) player[msg[0] - '0'].rotatePiece( true );
+                else if ( cmd == "swap" ) player[msg[0] - '0'].swapHoldPiece();
+                else if ( cmd == "pull" ) player[msg[0] - '0'].pullNewTetromino( Tqueue, queuePosition[msg[0] - '0'] );
+            }
+            msg = client.getMsg();
+        }
+    }
+}
+
 void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &transIn )
 {
     bool play = true;
@@ -66,26 +195,39 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
     foreground.createTargetTexture();
     while ( play )
     {
+        //Holds tetrominos for next turns
         vector<Tetromino> Tqueue;
+
+        //Marks the start/pause/resume timestamps
         Uint32 startMark, pauseMark, resumeMark;
+
+        //start/end flags
         bool start = false, win = false;
         enum pauseMenuOption { CONTINUE, RETRY, SETTINGS, QUIT_PLAY };
+
+        //loads background
         loadRandomBackground();
+
         if ( players == 1 )
         {
+            //Create a new player & modify game settings corresponding to chosen game mode
             Player player ( mod[LEVEL], gameMode, ( WINDOW_WIDTH - BOARD_WIDTH ) / 2, ( WINDOW_HEIGHT - BOARD_HEIGHT ) / 2 ) ;
-            int isDrawn = true;
             if ( gameMode == MASTER ) mod[LINECAP] = 300;
             else if ( gameMode == CLASSIC ) mod[LINECAP] = -1;
             else if ( gameMode == BLITZ ) mod[LINECAP] = 3;
+
+            //Flag for polling tetromino from the queue
+            int isDrawn = true;
+            
             while ( !player.isGameOver() )
             {
                 clearScreen();
+
+                //Renders Bg Img
                 bgImage.render();
-                if ( start )
-                {
-                    foreground.setAsTarget();
-                }
+                
+                //Renders foreground elements (playfield, hold, next queue, etc) on a new texture for creating animation
+                foreground.setAsTarget();
                 player.displayBoard();
                 player.displayTetrominoQueue( Tqueue );
 
@@ -108,10 +250,11 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                             playBackgroundMusic((players > 1 || gameMode == MASTER) ? FAST_THEME : CHILL_THEME);
                         }
                     }
+                    SDL_SetRenderTarget( renderer, NULL );
+                    foreground.render();
                 }
                 else if ( scene == INGAME )
                 {
-                    
                     TTF_SetFontSize( fontBold, TILE_WIDTH * 3 / 4 );
                     TTF_SetFontSize( fontRegular, TILE_WIDTH * 3 / 4 );
                     generateTetromino( Tqueue );
@@ -165,8 +308,6 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                             break;
                     }
                     SDL_SetRenderTarget( renderer, NULL );
-                    // if ( player.getMysteryEvent() == UPSIDE_DOWN ) SDL_RenderCopyEx( renderer, foreground, NULL, NULL, 180, NULL, SDL_FLIP_NONE );
-                    // else SDL_RenderCopy( renderer, foreground, NULL, NULL );
                     if ( player.getMysteryEvent() == UPSIDE_DOWN ) foreground.render( 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, NULL, 180 );
                     else foreground.render();
                     if ( scene == PAUSE ) { pauseMark = SDL_GetTicks(); pauseMusic(); }
@@ -217,7 +358,7 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                             player.terminateGame();
                             scene = QUIT;
                         }
-                        else if ( e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE ) scene = PAUSE ? INGAME : PAUSE;
+                        else if ( e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE ) scene = (scene == PAUSE ? INGAME : PAUSE);
                         else if ( activeButton != -1 && e.button.button == SDL_BUTTON_LEFT )
                         {
                             if (  e.type == SDL_MOUSEBUTTONUP )
@@ -275,6 +416,7 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                 }
                 SDL_RenderPresent( renderer );
             }
+
             if ( start && scene != QUIT && scene != SOLO_MENU )
             {
                 Uint32 endMark = SDL_GetTicks();
@@ -285,19 +427,18 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                 saveHighScore();
                 while ( SDL_GetTicks() - endMark <= 5000)
                 {
+                    
                     clearScreen();
                     bgImage.render();
-                    
                     TTF_SetFontSize( fontBold, TILE_WIDTH * 3 / 4 );
                     TTF_SetFontSize( fontRegular, TILE_WIDTH * 3 / 4 );
                     foreground.setAsTarget();
-                    TTF_SetFontSize( fontBold, LENGTH_UNIT );
-                    TTF_SetFontSize( fontRegular, LENGTH_UNIT );
-                    clearScreen();
+                    
                     player.displayBoard();
                     player.displayTetrominoQueue( Tqueue );
                     renderStatistics( player, startMark + SDL_GetTicks() - endMark, gameMode == TIME ? mod[TIME] : 0, mod[LINECAP] );
                     player.displayHeldTetromino();
+                    
                     if ( win )
                     {
                         if ( gameMode == BLITZ ) renderText( "TIME'S UP!", player.getX() + BOARD_WIDTH / 2, player.getY() + BOARD_HEIGHT / 2 - LENGTH_UNIT * 3, true, CENTER, MIDDLE, 3);
@@ -306,7 +447,11 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                     SDL_SetRenderTarget( renderer, NULL );
                     foreground.render();
                     SDL_RenderPresent( renderer );
+                    
                 }
+                
+                TTF_SetFontSize( fontBold, LENGTH_UNIT );
+                TTF_SetFontSize( fontRegular, LENGTH_UNIT );
 
                 string time = "";
                 int time_in_seconds = ( endMark - startMark ) / 1000;
@@ -317,6 +462,7 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
 
 
                 endMark = SDL_GetTicks();
+                
                 while ( SDL_GetTicks() - endMark < 500 )
                 {
                     clearScreen();
@@ -325,6 +471,7 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                     foreground.setAlphaMod( 255 * max((int)( 500 - SDL_GetTicks() + endMark ), 0) / 500 );
                     foreground.render();
                     SDL_RenderPresent( renderer );
+                    
                 }
 
                 endMark = SDL_GetTicks();
@@ -332,10 +479,10 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                 {
                     clearScreen();
                     bgImage.render();
-                    foreground.render();
-                    clearScreen();
+                    foreground.setAsTarget();
                     renderResultScreen(player, endMark, time );
                     SDL_SetRenderTarget( renderer, NULL );
+                    foreground.render();
                     if (SDL_GetTicks() - endMark <= 500)
                     {
                         foreground.setAlphaMod( min(255 * (int)(SDL_GetTicks() - endMark) / 500, 255) );
@@ -346,6 +493,7 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                     }
                     foreground.render();
                     SDL_RenderPresent( renderer );
+                    
                 }
 
             }
@@ -354,10 +502,15 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
         //Handles multiplayer modes
         else
         {
-            int x = (WINDOW_WIDTH - BOARD_WIDTH) / 2, y = (WINDOW_HEIGHT - BOARD_HEIGHT) / 2;
-            vector<Player> player ( players, Player(mod[LEVEL], gameMode, x, y) );
-            vector<int> queuePosition( players, 0 );
             int mainPos = isHost ? 0 : client.getPosition();
+            int x = (WINDOW_WIDTH - BOARD_WIDTH) / 2, y = (WINDOW_HEIGHT - BOARD_HEIGHT) / 2;
+            vector<Player> player;
+            for (int i = 0; i < players; i++)
+            {
+                if (i == mainPos) player.push_back( Player(mod[LEVEL], gameMode, x, y, true));
+                else player.push_back( Player(mod[LEVEL], gameMode, x, y, false));
+            }
+            vector<int> queuePosition( players, 0 );
 
             //Target textures for each playfield
             Texture mainPlayerTexture;
@@ -390,17 +543,38 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
             const int animationDuration = 1000; 
             while ( !endMatch )
             {
-                
+                thread handleOpponent;
+                if ( startRound )
+                {
+                // processOpponentsControl(Tqueue, queuePosition, player, survivors, anyEliminated);
+                    handleOpponent = thread(processOpponentsControl, ref(Tqueue), ref(queuePosition), ref(player), ref(survivors), ref(anyEliminated));
+                }
+                if (!isHost) mainPos = client.getPosition();
+                //Handle quit events
                 SDL_Event e;
                 while( SDL_PollEvent(&e) > 0 )
                 {
                     if ( e.type == SDL_QUIT )
                     {
+                        isHost ? server.closeServer() : client.closeSocket();
                         endMatch = true;
                         play = false;
                         scene = QUIT;
                     }
                 }
+
+                //Cancel game if the client is disconnected or the server does not have any client.
+                if ( (!isHost && !client.isConnected()) || (isHost && server.getClientNum() == 0) )
+                {
+                    scene = MULTI_MENU;
+                    play = false;
+                    break;
+                }
+
+                //Managing game logical process
+                if (startRound) player[mainPos].ingameProgress( Tqueue, queuePosition[mainPos], scene );
+                
+                //Managing render process
                 //Calculates the sample render frames at the start of the game or when any player is eliminated
                 
                 if ( anyEliminated )
@@ -441,24 +615,24 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                     }
                     
                     //Assigns values for the used frames at the start of the game
+                    anyEliminated = false;
                     if ( !startRound )
                     {
                         for ( int i = 0; i < sideFrame.size(); i++ )
                                 sideFrame[i] = sampleSideFrame[i];
                     }
-                    anyEliminated = false;
                 }
 
                 //Renders to each frame
                 clearScreen();
                 
-
                 for ( int i = 0; i < survivors; i++ )
                 {
                     if ( i == mainPos ) mainPlayerTexture.setAsTarget();
                     else sidePlayerTextures[i - (i > mainPos)].setAsTarget();
                     player[i].displayBoard();
-                    player[i].displayTetrominoQueue( Tqueue );
+                    renderText( playerList[i].name, WINDOW_WIDTH / 2, player[i].getY() + BOARD_HEIGHT + TILE_WIDTH * 2, false, CENTER, MIDDLE );
+                    renderText( to_string(winCounter[i]) + "Win" + (winCounter[i] > 1 ? "s" : ""), WINDOW_WIDTH / 2, player[i].getY() + BOARD_HEIGHT + TILE_WIDTH * 3, false, CENTER, MIDDLE );
                     if ( !startRound )
                     {
                         if ( !transIn )
@@ -476,6 +650,7 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                         
                         TTF_SetFontSize( fontBold, TILE_WIDTH * 3 / 4 );
                         TTF_SetFontSize( fontRegular, TILE_WIDTH * 3 / 4 );
+                        player[i].displayTetrominoQueue( Tqueue, queuePosition[i] );
                         renderStatistics( player[i], startMark );
                         player[i].displayCurrentTetromino();
                         player[i].displayHeldTetromino();
@@ -488,7 +663,7 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                 SDL_SetRenderTarget( renderer, NULL );
 
                 //Renders each frame to the main window
-                //Error inside this block
+
                 bgImage.render();
                 
                 if ( sampleSideFrame[0].x != sideFrame[0].x || sampleSideFrame[0].y != sideFrame[0].y )
@@ -533,11 +708,49 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                 if ( !startRound && transIn )
                 {
                     renderTransition( transIn );
-                    if ( !transIn ) startMark = SDL_GetTicks();
+                    if ( !transIn )
+                    {
+                        if (isHost)
+                        {
+                            int synced = 0;
+                            for ( int i = 0; i < server.getClientNum(); i++ ) server.makeMsg( "sync", i );
+                            server.sendToClient();
+                            generateTetromino( Tqueue, true );
+                            while ( synced < server.getClientNum() )
+                            {
+                                server.receive();
+                                for ( int i = 0; i < server.getClientNum(); i++ )
+                                {
+                                    if ( server.getMsg(i) == "ok" ) synced++;
+                                }
+                            }
+                            for ( int i = 0; i < server.getClientNum(); i++ ) server.makeMsg( "start", i );
+                            server.sendToClient();
+                        }
+                        else
+                        {
+                            string msg = "";
+                            do
+                            {
+                                client.receive();
+                                msg = client.getMsg();
+                            } while ( msg != "sync" );
+                            Sleep(10);
+                            processOpponentsControl( Tqueue, queuePosition, player, survivors, anyEliminated );
+                            client.sendToServer( "ok" );
+                            do
+                            {
+                                client.receive();
+                                msg = client.getMsg();
+                            } while ( msg != "start" );
+                        }
+                        startMark = SDL_GetTicks();
+                    }
                 }
 
                 //Display render buffer
                 SDL_RenderPresent( renderer );
+                if (handleOpponent.joinable()) handleOpponent.join();
             }
         }
         
@@ -581,10 +794,15 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
         while ( scene != QUIT && !transIn )
         {
             bgImage.render();
-            foreground.render();
+            if (players == 1) foreground.render();
             renderTransition( transIn );
             SDL_RenderPresent( renderer );
         }
+    }
+    if (gameMode >= SCORE)
+    {
+        if (isHost) server.closeServer();
+        else client.closeSocket();
     }
 }
 
@@ -1269,7 +1487,7 @@ void updateHighScore( int mode, int score, int line, int time )
         case SPRINT:
             for ( int i = 4; i > -1; i-- )
             {
-                if (    (hiscore[mode][i][LINE] == 0 && line == 0 && hiscore[mode][i][SCORE] < score) ||
+                if (    (hiscore[mode][i][LINE] == 0 && line > 0 || (line == 0 && hiscore[mode][i][SCORE] < score)) ||
                         line != 0 &&   (hiscore[mode][i][TIME] / hiscore[mode][i][LINE] > time/line ||
                                         (hiscore[mode][i][TIME] / hiscore[mode][i][LINE] == time/line && (  hiscore[mode][i][LINE] < line ||
                                                                                                             (hiscore[mode][i][LINE] == line && hiscore[mode][i][score] < score)
@@ -1390,7 +1608,7 @@ void multiplayerManager( int scene, int &changeScene, int mouse_x, int mouse_y, 
             status = adjustmentButton( LENGTH_UNIT * 40, LENGTH_UNIT * 17, mInfo.maxPlayers == 2, mInfo.maxPlayers == 4 );
             if ( isClicked ) mInfo.maxPlayers += status;
 
-            status = adjustmentButton( LENGTH_UNIT * 40, LENGTH_UNIT * 20, mInfo.gameMode == SCORE, mInfo.gameMode == MYSTERY_ATTACK );
+            status = adjustmentButton( LENGTH_UNIT * 40, LENGTH_UNIT * 20, mInfo.gameMode == SCORE, mInfo.gameMode == ATTACK );
             if ( isClicked ) mInfo.gameMode += status;
             
             int limitSpd = (mInfo.gameMode == SCORE) ? 19 : (mInfo.gameMode == ATTACK ? 10 : 15);
@@ -1476,11 +1694,6 @@ void multiplayerManager( int scene, int &changeScene, int mouse_x, int mouse_y, 
                         else
                         {
                             //Kick player i button = number i (in list: 1, 2, 3)
-                            // for ( int i = 1; i < playerList.size(); i++ )
-                            // {
-                            //     if ( i == activeButton ) continue;
-                            //     else server.makeMsg( to_string(activeButton) + "quit", i - 1 );
-                            // }
                             server.makeMsg( "kick", activeButton - 1 );
                         }
                         server.sendToClient();

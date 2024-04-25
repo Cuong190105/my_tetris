@@ -3,6 +3,8 @@
 #include <cstring>
 #include <iostream>
 #include <vector>
+#include <thread>
+#include <atomic>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <unistd.h>

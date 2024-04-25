@@ -1,6 +1,4 @@
 #include "onlan.hpp"
-#include <thread>
-#include <atomic>
 #include <windows.h>
 #include <map>
 #include <iphlpapi.h>
@@ -55,6 +53,7 @@ void Server::closeServer()
     {
         closeClientSocket(i);
     }
+    playerList.clear();
     WSACleanup();
 }
 
@@ -203,13 +202,11 @@ bool Server::acceptConnection()
         //Receives new client info: Name & address, then pushes into playerList & notifys other client
         receive();
         string tmp = getMsg( getClientNum() - 1 );
-        cout << "client num: " << getClientNum() << endl;
         for ( int i = 0; i < getClientNum() - 1; i++ )
         {
             //n is for "new player joined"
-            string msg = "n" + delimiter + tmp + delimiter + inet_ntoa(addr.sin_addr);
+            string msg = string("n") + delimiter + tmp + delimiter + inet_ntoa(addr.sin_addr);
             makeMsg( msg, i );
-            cout << "notification: " << msg << endl;
         }
         playerList.push_back(playerInfo{tmp, inet_ntoa(addr.sin_addr), false});
 
@@ -232,11 +229,12 @@ void Server::sendToClient()
     {
         if ( msgToEachClient[i].length() > 1 )
         {
-            cout << "Sent to " << i << ": " << msgToEachClient[i] << endl; 
+            cout << "Sent to " << i << " :" << msgToEachClient[i] << endl;
             int info = send( clientSocket[i], msgToEachClient[i].c_str(), msgToEachClient[i].length(), 0 );
             if ( info == SOCKET_ERROR )
                 closeClientSocket(i);
             else msgToEachClient[i] = "";
+            Sleep(1);
         }
     }
 }
@@ -252,7 +250,6 @@ void Server::receive()
         if ( info > 0 && strcmp(tmp, pingCmd.c_str()) != 0 )
         {
             clientMsg[i] += tmp;
-            cout << "received: " << tmp << endl;
         }
         else if (info == SOCKET_ERROR && WSAGetLastError() != WSAEWOULDBLOCK )
         {
@@ -260,12 +257,13 @@ void Server::receive()
             closeClientSocket(i);
             continue;
         }
+        Sleep(1);
     }
 }
 
 void Server::makeMsg( string msg, int client )
 {
-    msgToEachClient[client] = msg + endMsg;
+    msgToEachClient[client] += msg + endMsg;
 }
 
 string Server::getMsg( int client )
@@ -342,7 +340,6 @@ void Client::connectToServer( int serverNum )
         tmp = getMsg();
         Sleep(5);
     }
-    cout << "info: " << tmp << endl;
     int part = 0;
     vector<string> info(17, "");
     for (int i = 0; i < tmp.length(); i++)
@@ -361,7 +358,6 @@ void Client::connectToServer( int serverNum )
 void Client::sendToServer(string sendString)
 {
     string sendMsg = sendString + endMsg;
-    cout << "Sent: " << sendMsg << endl;
     int info = send( connectSocket, sendMsg.c_str(), sendMsg.length(), 0 );
     if (info == SOCKET_ERROR)
     {
@@ -445,8 +441,8 @@ void Client::receive()
     }
     else if ( info > 1 && strcmp(tmp, pingCmd.c_str()) != 0 )
     {
+        cout << "Received: " << tmp << endl;
         recvMsg += tmp;
-        cout << "received: " << tmp << endl;
     }
 }
 
