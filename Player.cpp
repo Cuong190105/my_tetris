@@ -20,6 +20,7 @@ Player::Player( int _level, int _mode, int _x, int _y, bool isActive )
     movesBeforeLock = 0;
     lowestRow = 21;
     x = _x; y = _y;
+    spd_x = 0; spd_y = 0;
     lockDelay = 500;
     mode = _mode;
     if (mode == MASTER) pullInterval = 1;
@@ -64,7 +65,22 @@ void Player::setTimeMark( Uint32 pauseMark )
 }
 
 int Player::getMode() const { return mode; }
-void Player::terminateGame() { gameOver = true; }
+void Player::terminateGame()
+{ 
+    gameOver = true;
+    if (activePlayer)
+    {
+        if (!isHost) client.sendToServer( to_string(client.getPosition()) + "term" );
+        else
+        {
+            for (int i = 0; i < server.getClientNum(); i++)
+            {
+                server.makeMsg( "0term", i );
+            }
+            server.sendToClient();
+        }
+    }
+}
 bool Player::isGameOver() { return gameOver; }
 
 int Player::getMysteryEvent() const { return mysteryEvent; }
@@ -138,6 +154,7 @@ void Player::lockTetromino()
     int additionDelay = 0;
     playSfx( LOCK );
     holdLock = false;
+    spd_y = 3;
     if ( tetr.getType() == BOMB_PIECE )
     {
         int cnt = 0;
@@ -200,6 +217,10 @@ void Player::movePieceHorizontally( bool right )
                 server.sendToClient();
             } 
         }
+    }
+    else
+    {
+        spd_x = 3 * (2 * right - 1);
     }
 }
 
@@ -413,8 +434,8 @@ void Player::gravityPull()
     bool change = false;
     if ( tetr.getType() != BOMB_PIECE && checkCollision( tetr, -1 ) )
     {
-        lockDelayHandler();
-        change = true;
+        if ( !activePlayer ) {lockTetromino(); change = true;}
+        else lockDelayHandler();
     }
     else
     {
@@ -787,6 +808,22 @@ void Player::swapHoldPiece()
 
 void Player::displayBoard()
 {
+    x += spd_x; y += spd_y;
+    if ( abs(x - (WINDOW_WIDTH - BOARD_WIDTH) / 2) > 6)
+    {
+        x = (WINDOW_WIDTH - BOARD_WIDTH) / 2 + 6 * (2 * (x > (WINDOW_WIDTH - BOARD_WIDTH) / 2) - 1);
+    }
+    if ( y - (WINDOW_HEIGHT - BOARD_HEIGHT) / 2 > 6)
+    {
+        y = (WINDOW_HEIGHT - BOARD_HEIGHT) / 2 + 6;
+    }
+    if ( x > (WINDOW_WIDTH - BOARD_WIDTH) / 2 ) spd_x --;
+    else if ( x < (WINDOW_WIDTH - BOARD_WIDTH) / 2 ) spd_x ++;
+    else spd_x = 0;
+    if ( y != (WINDOW_HEIGHT - BOARD_HEIGHT) / 2 ) spd_y --;
+    else spd_y = 0;
+
+
     //Draw board background color
     SDL_SetRenderDrawColor( renderer, 0, 0, 0, 0xFF );
     SDL_Rect board { x, y, BOARD_WIDTH, BOARD_HEIGHT };
@@ -964,7 +1001,7 @@ void Player::ingameProgress( const vector<Tetromino> &Tqueue, int &queuePosition
             if ( (int)SDL_GetTicks() - (int)delaySpawnMark > SPAWN_DELAY )
             {
                 pullNewTetromino( Tqueue, queuePosition );
-                if ( tetr.getType() != BOMB_PIECE && checkCollision( tetr ) ) gameOver = true;
+                if ( tetr.getType() != BOMB_PIECE && checkCollision( tetr ) ) terminateGame();
             }
         }
         if ( tetr.getType() != 0 ) gravityPull();

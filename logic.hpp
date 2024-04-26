@@ -16,7 +16,7 @@ void generateTetromino( vector<Tetromino> &Tqueue, bool forceAdd = false );
 
 //===================================HIGH SCORE MANIPULATION================================
 
-const string HIGHSCORE_DIR = "hiscore.txt";
+const string HIGHSCORE_DIR = "src/hiscore.txt";
 
 //Updates high score
 void updateHighScore( int mode, int score, int line, int time );
@@ -36,7 +36,7 @@ void settingRules( int gameMode, int &activeButton, bool &adjusted, int mod[4] )
 //===================================MULTIPLAYER MANIPULATION================================
 void multiplayerManager( int scene, int &changeScene, int mouse_x, int mouse_y, int &activeButton, bool isClicked, SDL_Keycode key, string text = "" );
 
-void processOpponentsControl( vector<Tetromino> &Tqueue, vector<int> &queuePosition, vector<Player> &player, int &survivors, bool &anyEliminated );
+void processOpponentsControl( vector<Tetromino> &Tqueue, vector<int> &queuePosition, vector<Player> &player, vector<int>& recentEliminated, int &survivors );
 //=======================================SETTINGS============================================
 
 //Manages game settings

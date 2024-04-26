@@ -64,7 +64,7 @@ void handlePauseMenu( int &activeButton, int &mouse_x, int &mouse_y )
     }
 }
 
-void processOpponentsControl( vector<Tetromino> &Tqueue, vector<int> &queuePosition, vector<Player> &player, int &survivors, bool &anyEliminated )
+void processOpponentsControl( vector<Tetromino> &Tqueue, vector<int> &queuePosition, vector<Player> &player, vector<int>& recentEliminated, int &survivors )
 {
     
     int minPos = queuePosition[0], maxPos = queuePosition[0];
@@ -104,13 +104,21 @@ void processOpponentsControl( vector<Tetromino> &Tqueue, vector<int> &queuePosit
 
                 server.sendToClient();
                 string cmd = msg.substr(1, 4);
-                //The msg is actually "quit\x1F" but we slice the string from index 1 to 5
-                if ( cmd == ("uit" + endMsg))
+                //The msg is actually "quit\x1F" but we slice the string from index 1 to 4
+                if ( cmd == ("uit" + endMsg) || cmd == "term")
                 {
-                    server.closeClientSocket( i );
-                    queuePosition.erase( queuePosition.begin() + i );
-                    player.erase( player.begin() + i + 1 );
-                    survivors--; anyEliminated = true; break;
+                    if (cmd[0] == 'u') server.closeClientSocket( i );
+                    player[msg[0]-'0'].terminateGame();
+                    recentEliminated.push_back(i + 1 + (cmd[0] == 'u') * 100);
+                    if ( cmd[0] == 't' )
+                    {
+                        for ( int i = 0; i < server.getClientNum(); i++ )
+                        {
+                            if ( i + 1 != msg[0] - '0' ) server.makeMsg( msg, i );
+                        }
+                        server.sendToClient();
+                    }
+                    break;
                 }
                 //gpul == gravity pull
                 else if ( cmd == "gpul" ) player[msg[0] - '0'].gravityPull();
@@ -130,16 +138,14 @@ void processOpponentsControl( vector<Tetromino> &Tqueue, vector<int> &queuePosit
                 else if ( cmd == "swap" ) player[msg[0] - '0'].swapHoldPiece();
                 //pull = pull new piece
                 else if ( cmd == "pull" ) player[msg[0] - '0'].pullNewTetromino( Tqueue, queuePosition[msg[0] - '0'] ); 
-
+                //term = terminate
                 if (msg[0] - '0' > i + 1) disconnectedList.push_back(i + 1);
                 msg = server.getMsg( i );
             }
         }
         for (int i : disconnectedList)
         {
-            queuePosition.erase(queuePosition.begin() + i);
-            player.erase( player.begin() + i );
-            survivors --; anyEliminated = true;
+            recentEliminated.push_back(i + 100);
         }
         
     }
@@ -167,10 +173,12 @@ void processOpponentsControl( vector<Tetromino> &Tqueue, vector<int> &queuePosit
                     }
                     else
                     {
-                        player.erase( player.begin() + (msg[0] - '0') );
-                        playerList.erase( playerList.begin() + (msg[0] - '0') );
-                        if ( msg[0] - '0' < client.getPosition() ) client.changePosition();
-                        survivors --; anyEliminated = true;
+                        if ( !player[msg[0] - '0'].isGameOver() )
+                        {
+                            player[msg[0] - '0'].terminateGame();
+                            recentEliminated.push_back(msg[0] - '0' + 100);
+                        }
+                        // if ( msg[0] - '0' < client.getPosition() ) client.changePosition();
                     }
                 }
                 else if ( cmd == "gpul" ) player[msg[0] - '0'].gravityPull();
@@ -182,6 +190,7 @@ void processOpponentsControl( vector<Tetromino> &Tqueue, vector<int> &queuePosit
                 else if ( cmd == "rrot" ) player[msg[0] - '0'].rotatePiece( true );
                 else if ( cmd == "swap" ) player[msg[0] - '0'].swapHoldPiece();
                 else if ( cmd == "pull" ) player[msg[0] - '0'].pullNewTetromino( Tqueue, queuePosition[msg[0] - '0'] );
+                else if ( cmd == "term" ) {player[msg[0] - '0'].terminateGame();recentEliminated.push_back(msg[0] - '0');}
             }
             msg = client.getMsg();
         }
@@ -247,7 +256,7 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                         if ( start )
                         {
                             startMark = SDL_GetTicks();
-                            playBackgroundMusic((players > 1 || gameMode == MASTER) ? FAST_THEME : CHILL_THEME);
+                            playBackgroundMusic((gameMode == MASTER) ? FAST_THEME : CHILL_THEME);
                         }
                     }
                     SDL_SetRenderTarget( renderer, NULL );
@@ -503,29 +512,36 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
         else
         {
             int mainPos = isHost ? 0 : client.getPosition();
-            int x = (WINDOW_WIDTH - BOARD_WIDTH) / 2, y = (WINDOW_HEIGHT - BOARD_HEIGHT) / 2;
+            
+            int survivors = playerList.size();
+            
+            vector<int> survivorList;
+
             vector<Player> player;
-            for (int i = 0; i < players; i++)
+
+            for (int i = 0; i < survivors; i++)
             {
+                int x = (WINDOW_WIDTH - BOARD_WIDTH) / 2, y = (WINDOW_HEIGHT - BOARD_HEIGHT) / 2;
                 if (i == mainPos) player.push_back( Player(mod[LEVEL], gameMode, x, y, true));
                 else player.push_back( Player(mod[LEVEL], gameMode, x, y, false));
             }
-            vector<int> queuePosition( players, 0 );
+            vector<int> queuePosition( survivors, 0 );
 
             //Target textures for each playfield
             Texture mainPlayerTexture;
             mainPlayerTexture.createTargetTexture();
-            vector<Texture> sidePlayerTextures ( players - 1);
+            vector<Texture> sidePlayerTextures ( survivors);
             for ( int i = 0; i < sidePlayerTextures.size(); i++ )
             {
                 sidePlayerTextures[i].createTargetTexture();
             }
 
             //Stores match results & essential flags for starting/terminating match or doing animation
-            vector<int> winCounter (players, 0);
+            vector<int> winCounter (survivors, 0);
             bool endMatch = false, startRound = false, anyEliminated = true;
-            int survivors = players;
-            Uint32 lastEliminationMark = SDL_GetTicks();
+            bool changeLayout = false;
+            vector<Uint32> eliminationMark (survivors);
+            Uint32 lastEliMark = SDL_GetTicks();
 
             //The frame that trims the source texture used in SDL_RenderCopy
             SDL_Rect TRIM_FRAME { WINDOW_WIDTH / 4, 0, WINDOW_WIDTH / 2, WINDOW_HEIGHT };
@@ -535,21 +551,34 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
              * and will gradually change & distribute to match the new sample if any player is eliminated to create the animation.
              */
 
-            vector<SDL_Rect> sampleSideFrame (survivors - 1, {0, 0, WINDOW_WIDTH / 4, WINDOW_HEIGHT / 2});
+            vector<SDL_Rect> sampleSideFrame (survivors, {0, 0, WINDOW_WIDTH / 4, WINDOW_HEIGHT / 2});
+            
+            vector<SDL_Rect> tmpFrame (survivors, {0, 0, WINDOW_WIDTH / 4, WINDOW_HEIGHT / 2});
 
+            //Stores recently eliminated players
+            vector<int> recentEliminated;
+
+            //Stores disconnected players.
+            vector<int> disconnected;
+
+            for (int i = 0; i < playerList.size(); i++) survivorList.push_back(i);
             //Main frame for this player, side frames for the opponents
             SDL_Rect mainFrame { 0, 0, WINDOW_WIDTH / 2, WINDOW_HEIGHT };
-            vector<SDL_Rect> sideFrame ( survivors - 1 );
+            SDL_Rect sampleMainFrame { 0, 0, WINDOW_WIDTH / 2, WINDOW_HEIGHT };
+
+            vector<SDL_Rect> sideFrame ( survivors );
+            
             const int animationDuration = 1000; 
+            
             while ( !endMatch )
             {
                 thread handleOpponent;
                 if ( startRound )
                 {
-                // processOpponentsControl(Tqueue, queuePosition, player, survivors, anyEliminated);
-                    handleOpponent = thread(processOpponentsControl, ref(Tqueue), ref(queuePosition), ref(player), ref(survivors), ref(anyEliminated));
+                    processOpponentsControl( Tqueue, queuePosition, player, recentEliminated, survivors );
+                    // handleOpponent = thread(processOpponentsControl, ref(Tqueue), ref(queuePosition), ref(player), ref(recentEliminated), ref(survivors));
                 }
-                if (!isHost) mainPos = client.getPosition();
+
                 //Handle quit events
                 SDL_Event e;
                 while( SDL_PollEvent(&e) > 0 )
@@ -566,56 +595,147 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                 //Cancel game if the client is disconnected or the server does not have any client.
                 if ( (!isHost && !client.isConnected()) || (isHost && server.getClientNum() == 0) )
                 {
+                    if ( handleOpponent.joinable() ) handleOpponent.join();
                     scene = MULTI_MENU;
                     play = false;
                     break;
                 }
 
                 //Managing game logical process
-                if (startRound) player[mainPos].ingameProgress( Tqueue, queuePosition[mainPos], scene );
+                
+                if (startRound && !player[mainPos].isGameOver()) 
+                {
+                    player[mainPos].ingameProgress( Tqueue, queuePosition[mainPos], scene );
+                    if ( player[mainPos].isGameOver() )
+                    {
+                        recentEliminated.push_back( mainPos );
+                    }
+                }
+                
+                while ( !recentEliminated.empty() )
+                {
+                    if ( recentEliminated[0] >= 100 )
+                    {
+                        recentEliminated[0] -= 100;
+                        disconnected.push_back(recentEliminated[0]);
+                    }
+                    for (int i = 0; i < survivors; i++)
+                    {
+                        cout << "pop pl " << recentEliminated[0];
+                        if (i == recentEliminated[0]) survivorList.erase( survivorList.begin() + i ); break;
+                    }
+                    eliminationMark.push_back( SDL_GetTicks() );
+                    lastEliMark = SDL_GetTicks();
+                    survivors--;                
+                    anyEliminated = true;
+                    recentEliminated.erase( recentEliminated.begin() );
+                }
                 
                 //Managing render process
-                //Calculates the sample render frames at the start of the game or when any player is eliminated
+                //Renders to each frame
                 
+                clearScreen();
+                
+                for ( int i = 0; i < survivors; i++ )
+                {
+                    if ( survivorList[i] == mainPos ) mainPlayerTexture.setAsTarget();
+                    else sidePlayerTextures[survivorList[i] ].setAsTarget();
+                    player[survivorList[i]].displayBoard();
+                    
+                    for ( int j = 0; j < playerList.size(); j++)
+                    {
+                        if ( j == survivorList[i] )
+                        {
+                            renderText( playerList[j].name, WINDOW_WIDTH / 2, player[survivorList[i]].getY() + BOARD_HEIGHT + TILE_WIDTH, false, CENTER, MIDDLE );
+                            renderText( to_string(winCounter[j]) + " Win" + (winCounter[survivorList[i]] > 1 ? "s" : ""), WINDOW_WIDTH / 2, player[survivorList[i]].getY() + BOARD_HEIGHT + TILE_WIDTH * 2, false, CENTER, MIDDLE );
+                            break;
+                        }
+                        
+                    }
+                    if ( !startRound )
+                    {
+                        if ( !transIn )
+                        {
+                            startRound = displayCountdown(player[survivorList[i]].getX(), player[survivorList[i]].getY(), BOARD_WIDTH, BOARD_HEIGHT, startMark) && survivorList[i] == survivors - 1;
+                            if ( startRound && survivorList[i] == survivors - 1 )
+                            {
+                                startMark = SDL_GetTicks();
+                                playBackgroundMusic( FAST_THEME );
+                            }
+                        }
+                    }
+                    else if ( scene == INGAME )
+                    {
+                        TTF_SetFontSize( fontBold, TILE_WIDTH * 3 / 4 );
+                        TTF_SetFontSize( fontRegular, TILE_WIDTH * 3 / 4 );
+                        player[survivorList[i]].displayTetrominoQueue( Tqueue, queuePosition[survivorList[i]] );
+                        renderStatistics( player[survivorList[i]], startMark );
+                        player[survivorList[i]].displayCurrentTetromino();
+                        player[survivorList[i]].displayHeldTetromino();
+                        player[survivorList[i]].displayBonus();
+                        TTF_SetFontSize( fontBold, LENGTH_UNIT );
+                        TTF_SetFontSize( fontRegular, LENGTH_UNIT );
+                    }
+                }
+                SDL_SetRenderTarget( renderer, NULL );
+
+                //Calculates the sample render frames at the start of the game or when any player is eliminated
                 if ( anyEliminated )
                 {
+                    vector<int> sidePlayer;
+                    for (int i = 0; i < survivors; i++) if (survivorList[i] != mainPos) sidePlayer.push_back(survivorList[i]);
                     if ( !player[mainPos].isGameOver() )
                     {
-                        sampleSideFrame[0].x = WINDOW_WIDTH / 2;
-                        if (survivors == 2)
+                        if ( survivors == 1)
                         {
-                            sampleSideFrame[0].w *= 2;
-                            sampleSideFrame[0].h *= 2;
+                            sampleMainFrame.w *= 2;
                         }
-                        else
+                        else if ( survivors > 1 )
                         {
-                            sampleSideFrame[1].x = WINDOW_WIDTH * 3 / 4;
-                            if (survivors == 3)
+                            sampleSideFrame[survivorList[sidePlayer[0]]].x = WINDOW_WIDTH / 2;
+                            if (survivors == 2)
                             {
-                                sampleSideFrame[0].y = WINDOW_HEIGHT / 4;
-                                sampleSideFrame[1].y = WINDOW_HEIGHT / 4;
+                                sampleSideFrame[survivorList[sidePlayer[0]]].w *= 2;
+                                sampleSideFrame[survivorList[sidePlayer[0]]].h *= 2;
                             }
                             else
                             {
-                                sampleSideFrame[2].x = WINDOW_WIDTH * 5 / 8;
-                                sampleSideFrame[2].y = WINDOW_HEIGHT / 2;
+                                sampleSideFrame[survivorList[sidePlayer[1]]].x = WINDOW_WIDTH * 3 / 4;
+                                if (survivors == 3)
+                                {
+                                    sampleSideFrame[survivorList[sidePlayer[0]]].y = WINDOW_HEIGHT / 4;
+                                    sampleSideFrame[survivorList[sidePlayer[1]]].y = WINDOW_HEIGHT / 4;
+                                }
+                                else
+                                {
+                                    sampleSideFrame[survivorList[sidePlayer[2]]].x = WINDOW_WIDTH * 5 / 8;
+                                    sampleSideFrame[survivorList[sidePlayer[2]]].y = WINDOW_HEIGHT / 2;
+                                }
                             }
                         }
                     }
                     else
                     {
-                        
                         for ( int i = 0; i < survivors; i++ )
                         {
-                            sampleSideFrame[i].w = WINDOW_WIDTH / survivors;
-                            sampleSideFrame[i].h = 2 * WINDOW_HEIGHT / survivors;
-                            sampleSideFrame[i].x = i * sampleSideFrame[i].x;
-                            sampleSideFrame[i].y = (WINDOW_HEIGHT - sampleSideFrame[i].h) / 2;
+                            sampleSideFrame[survivorList[sidePlayer[i]] ].w = WINDOW_WIDTH / survivors;
+                            sampleSideFrame[survivorList[sidePlayer[i]] ].h = 2 * WINDOW_HEIGHT / survivors;
+                            sampleSideFrame[survivorList[sidePlayer[i]] ].x = i * sampleSideFrame[survivorList[sidePlayer[i]] ].w;
+                            sampleSideFrame[survivorList[sidePlayer[i]] ].y = (WINDOW_HEIGHT - sampleSideFrame[survivorList[sidePlayer[i]] ].h) / 2;
                         }
                     }
                     
-                    //Assigns values for the used frames at the start of the game
+                    if (changeLayout)
+                    {
+                        for (int i = 0; i < survivors; i++) if (survivorList[i] != mainPos)
+                        {
+                            sideFrame[survivorList[i] ] = tmpFrame[survivorList[i] ]; 
+                        }
+                    }
+
                     anyEliminated = false;
+                    if (startRound) changeLayout = true;
+                    //Assigns values for the used frames at the start of the game
                     if ( !startRound )
                     {
                         for ( int i = 0; i < sideFrame.size(); i++ )
@@ -623,86 +743,86 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                     }
                 }
 
-                //Renders to each frame
-                clearScreen();
-                
-                for ( int i = 0; i < survivors; i++ )
-                {
-                    if ( i == mainPos ) mainPlayerTexture.setAsTarget();
-                    else sidePlayerTextures[i - (i > mainPos)].setAsTarget();
-                    player[i].displayBoard();
-                    renderText( playerList[i].name, WINDOW_WIDTH / 2, player[i].getY() + BOARD_HEIGHT + TILE_WIDTH * 2, false, CENTER, MIDDLE );
-                    renderText( to_string(winCounter[i]) + "Win" + (winCounter[i] > 1 ? "s" : ""), WINDOW_WIDTH / 2, player[i].getY() + BOARD_HEIGHT + TILE_WIDTH * 3, false, CENTER, MIDDLE );
-                    if ( !startRound )
-                    {
-                        if ( !transIn )
-                        {
-                            startRound = displayCountdown(player[i].getX(), player[i].getY(), BOARD_WIDTH, BOARD_HEIGHT, startMark) && i == survivors - 1;
-                            if ( startRound && i == survivors - 1 )
-                            {
-                                startMark = SDL_GetTicks();
-                                playBackgroundMusic((players > 1 || gameMode == MASTER) ? FAST_THEME : CHILL_THEME);
-                            }
-                        }
-                    }
-                    else if ( scene == INGAME )
-                    {
-                        
-                        TTF_SetFontSize( fontBold, TILE_WIDTH * 3 / 4 );
-                        TTF_SetFontSize( fontRegular, TILE_WIDTH * 3 / 4 );
-                        player[i].displayTetrominoQueue( Tqueue, queuePosition[i] );
-                        renderStatistics( player[i], startMark );
-                        player[i].displayCurrentTetromino();
-                        player[i].displayHeldTetromino();
-                        player[i].displayBonus();
-                        TTF_SetFontSize( fontBold, LENGTH_UNIT );
-                        TTF_SetFontSize( fontRegular, LENGTH_UNIT );
-                        
-                    }
-                }
-                SDL_SetRenderTarget( renderer, NULL );
-
                 //Renders each frame to the main window
-
                 bgImage.render();
-                
-                if ( sampleSideFrame[0].x != sideFrame[0].x || sampleSideFrame[0].y != sideFrame[0].y )
+
+                if ( changeLayout)
                 {
                     //get delta time
-                    double progress = (SDL_GetTicks() - lastEliminationMark) / animationDuration;
+                    Uint32 now = SDL_GetTicks();
+                    double progress = (now - lastEliMark) * 1.f / animationDuration;
 
-                    if ( progress <= 1 )
+                    if ( progress < 1 )
                     {
                         //Quadratic ease out
                         double relativePosition = 1 - (1 - progress) * (1 - progress);
-                        for (int i = 0; i < sideFrame.size(); i++)
+
+                        if ( survivors == 1 )
                         {
-                            SDL_Rect tmp {
-                                (sampleSideFrame[i].x - sideFrame[i].x) * relativePosition + sideFrame[i].x,
-                                (sampleSideFrame[i].y - sideFrame[i].y) * relativePosition + sideFrame[i].y,
-                                (sampleSideFrame[i].w - sideFrame[i].w) * relativePosition + sideFrame[i].w,
-                                (sampleSideFrame[i].h - sideFrame[i].h) * relativePosition + sideFrame[i].h,
+                            TRIM_FRAME.w = (WINDOW_WIDTH / 2) * relativePosition + WINDOW_WIDTH / 2;
+                            TRIM_FRAME.x = (WINDOW_WIDTH - TRIM_FRAME.w) / 2;
+                        }
+
+                        for (int i = 0; i < survivors; i++) if ( survivorList[i] != mainPos )
+                        {
+                            tmpFrame[survivorList[i] ] = {
+                                (int)((sampleSideFrame[survivorList[i] ].x - sideFrame[survivorList[i] ].x) * relativePosition + sideFrame[survivorList[i] ].x),
+                                (int)((sampleSideFrame[survivorList[i] ].y - sideFrame[survivorList[i] ].y) * relativePosition + sideFrame[survivorList[i] ].y),
+                                (int)((sampleSideFrame[survivorList[i] ].w - sideFrame[survivorList[i] ].w) * relativePosition + sideFrame[survivorList[i] ].w),
+                                (int)((sampleSideFrame[survivorList[i] ].h - sideFrame[survivorList[i] ].h) * relativePosition + sideFrame[survivorList[i] ].h),
                             };
-                            sidePlayerTextures[i].render( tmp.x, tmp.x, tmp.w, tmp.h, &TRIM_FRAME);
+                            sidePlayerTextures[i].render( tmpFrame[survivorList[i] ].x, tmpFrame[survivorList[i] ].y, tmpFrame[survivorList[i] ].w, tmpFrame[survivorList[i] ].h, &TRIM_FRAME);
+                        }
+
+                        if ( survivors == 1 && survivorList[0] == mainPos )
+                        {
+                            SDL_Rect tmpFrame = {
+                                (int)((sampleMainFrame.x - mainFrame.x) * relativePosition + mainFrame.x),
+                                (int)((sampleMainFrame.y - mainFrame.y) * relativePosition + mainFrame.y),
+                                (int)((sampleMainFrame.w - mainFrame.w) * relativePosition + mainFrame.w),
+                                (int)((sampleMainFrame.h - mainFrame.h) * relativePosition + mainFrame.h),
+                            };
+                            mainPlayerTexture.render( tmpFrame.x, tmpFrame.y, tmpFrame.w, tmpFrame.h, &TRIM_FRAME );
                         }
                     }
                     else
                     {
-                        for (int i = 0; i < sideFrame.size(); i++)
+                        for (int i = 0; i < survivors; i++) if ( survivorList[i] != mainPos )
                         {
-                            sideFrame[i] = sampleSideFrame[i];
-                            sidePlayerTextures[i].render( sideFrame[i].x, sideFrame[i].x, sideFrame[i].w, sideFrame[i].h, &TRIM_FRAME);
+                            sideFrame[survivorList[i] ] = sampleSideFrame[survivorList[i] ];
+                            sidePlayerTextures[survivorList[i] ].render( sideFrame[survivorList[i] ].x, sideFrame[survivorList[i] ].x, sideFrame[survivorList[i] ].w, sideFrame[survivorList[i] ].h, &TRIM_FRAME);
+                        }
+                    }
+
+                    //Render fading board of lost player
+                    for ( int i = 0; i < playerList.size(); i++ )
+                    {
+                        if ( now - eliminationMark[i] < animationDuration )
+                        {
+                            if ( i == mainPos )
+                            {
+                                mainPlayerTexture.setAlphaMod( 255 * ( 1 - (now - eliminationMark[i]) * 1.f / animationDuration ) );
+                                mainPlayerTexture.render( mainFrame.x, mainFrame.y, mainFrame.w, mainFrame.h, &TRIM_FRAME );
+                            }
+                            else 
+                            {
+                                sidePlayerTextures[i].setAlphaMod( 255 * ( 1 - (now - eliminationMark[i]) * 1.f / animationDuration ) );
+                                sidePlayerTextures[i].render( sideFrame[i].x, sideFrame[i].y, sideFrame[i].w, sideFrame[i].h, &TRIM_FRAME );    
+                            }
                         }
                     }
                 }
                 else
                 {
-                    for (int i = 0; i < sideFrame.size(); i++)
+                    for (int i = 0; i < survivors; i++) if ( survivorList[i] != mainPos )
                     {
-                        sidePlayerTextures[i].render( sideFrame[i].x, sideFrame[i].y, sideFrame[i].w, sideFrame[i].h, &TRIM_FRAME);
+                        sidePlayerTextures[survivorList[i] ].render( sideFrame[survivorList[i] ].x, sideFrame[survivorList[i] ].y, sideFrame[survivorList[i] ].w, sideFrame[survivorList[i] ].h, &TRIM_FRAME);
                     }
                 }
-                mainPlayerTexture.render( mainFrame.x, mainFrame.y, mainFrame.w, mainFrame.h, &TRIM_FRAME );
+
+
+                if (!player[mainPos].isGameOver()) mainPlayerTexture.render( mainFrame.x, mainFrame.y, mainFrame.w, mainFrame.h, &TRIM_FRAME );
+                
 
                 //Render Transitions overlay
                 if ( !startRound && transIn )
@@ -736,7 +856,7 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                                 msg = client.getMsg();
                             } while ( msg != "sync" );
                             Sleep(10);
-                            processOpponentsControl( Tqueue, queuePosition, player, survivors, anyEliminated );
+                            processOpponentsControl( Tqueue, queuePosition, player, recentEliminated, survivors );
                             client.sendToServer( "ok" );
                             do
                             {
@@ -751,6 +871,7 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                 //Display render buffer
                 SDL_RenderPresent( renderer );
                 if (handleOpponent.joinable()) handleOpponent.join();
+                
             }
         }
         

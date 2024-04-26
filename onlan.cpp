@@ -114,6 +114,8 @@ bool Server::createServer()
     }
     unsigned long b = 1;
     ioctlsocket(ListenSocket, FIONBIO, &b);
+
+    // playerList.push_back()
     return true;
 }
 
@@ -229,7 +231,7 @@ void Server::sendToClient()
     {
         if ( msgToEachClient[i].length() > 1 )
         {
-            cout << "Sent to " << i << " :" << msgToEachClient[i] << endl;
+            // cout << "Sent to " << i << " :" << msgToEachClient[i] << endl;
             int info = send( clientSocket[i], msgToEachClient[i].c_str(), msgToEachClient[i].length(), 0 );
             if ( info == SOCKET_ERROR )
                 closeClientSocket(i);
@@ -441,7 +443,7 @@ void Client::receive()
     }
     else if ( info > 1 && strcmp(tmp, pingCmd.c_str()) != 0 )
     {
-        cout << "Received: " << tmp << endl;
+        // cout << "Received: " << tmp << endl;
         recvMsg += tmp;
     }
 }

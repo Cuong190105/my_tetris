@@ -10,7 +10,7 @@ class Player
 {
     private:
         //Position of this player's playfield
-        int x, y;
+        int x, y, spd_x, spd_y;
 
         PlayBoard pb;
         Tetromino tetr;

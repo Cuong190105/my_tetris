@@ -2,7 +2,7 @@
 OBJS = main.cpp PlayBoard.cpp Tetromino.cpp logic.cpp rendering.cpp Texture.cpp Player.cpp audio.cpp settings.cpp onlan.cpp icon.o
 
 #OBJ_NAME specifies the name of our exectuable
-OBJ_NAME = main
+OBJ_NAME = tetris
 
 #This is the target that compiles our executable
 all : $(OBJS)

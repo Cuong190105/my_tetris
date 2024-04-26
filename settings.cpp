@@ -2,7 +2,7 @@
 #include <iostream>
 #include <iomanip>
 using namespace std;
-const string CONFIG_FILE = "settings.txt";
+const string CONFIG_FILE = "src/settings.txt";
 int heightDimension = 0;
 int LENGTH_UNIT = heightDimension / 36;
 int bgmVolume = 100;
