@@ -1,5 +1,6 @@
 # Homemade Tetris
-Tetris là một trò chơi cổ điển, gắn liền với tuổi thơ của hầu hết các thế hệ 9x đến hiện tại. Với lối chơi đơn giản tuy nhiên lại vô cùng cuốn hút, Tetris sẽ khiến bạn chìm đắm trong thế giới của những khối gạch được sắp xếp một cách vừa vặn và tinh tế.
+Tetris là một trò chơi cổ điển, gắn liền với tuổi thơ của hầu hết các thế hệ 9x đến hiện tại. Với lối chơi đơn giản tuy nhiên lại vô cùng cuốn hút, Tetris sẽ khiến bạn chìm đắm trong thế giới của những khối gạch được sắp xếp một cách vừa vặn và tinh tế.  
+Demo game: [Tại đây](https://youtu.be/zLvHePbUJe4)
 # 0. Tải game
 ## Cách 1:
 Tải tệp zip trên repo này. Sau đó giải nén và chạy file tetris.exe để mở game.
@@ -19,9 +20,12 @@ Mỗi chế độ chơi sẽ có mục tiêu và thiết lập khác nhau. Cụ 
 * Blitz: Chớp nhoáng! Cố gắng ghi được nhiều điểm nhất có thể trong thử thách giới hạn thời gian này.
 * Master: Chế độ yêu cầu sự quan sát, phản xạ và đưa ra quyết định ở tốc độ cực cao khi tốc độ gạch rơi được đẩy lên tối đa và thời gian gạch khóa vào vị trí sẽ giảm dần theo cấp độ. Nếu ai chưa biết thì Tetris hiện đại có cơ chế giữ miếng gạch ở trạng thái tự do trong một khoảng thời gian nhất định dù có vẻ nó đã chạm đất. Điều này giúp chế độ như Master hay Classic ở cấp độ cao trở nên khả thi hơn.
 * Mystery: Chế độ chơi thuần giải trí không kém phần hấp dẫn so với các chế độ khác. Lối chơi tương tự như chế độ Classic tuy nhiên bạn sẽ gặp phải những sự kiện ngẫu nhiên vô cùng thú vị trong suốt hành trình. Có tất cả 7 loại sự kiện có thể xảy ra. Dưới đây là một vài minh họa:
-  * Đôi khi chồng gạch của bạn quá cao và bạn muốn giải quyết nó nhanh chóng. Đừng lo đã có bom ở đây rồi.
+  * Đôi khi chồng gạch của bạn quá cao và bạn muốn giải quyết nó nhanh chóng. Đừng lo đã có các khối bất ổn đây rồi. Ngoài ra còn có bom nữa.
+  ![Unstable](src/readme_resources/unstable.gif)
   * Tuy nhiên không phải lúc nào cũng may mắn vậy. Đôi khi game sẽ ném cho bạn một viên gạch to chà bá này thì sao nhỉ.
+  ![Unstable](src/readme_resources/giant.gif)
   * ... Hay thậm chí xoay ngược màn hình của bạn lại. :D
+  ![Unstable](src/readme_resources/upside_down.gif)
 Để chơi, bạn bấm vào chế độ mà bạn mong muốn ở bên trái. Khi di chuột đến một chế độ, sẽ có một chút thông tin hiện ra ở bảng bên phải bao gồm mô tả game và bảng xếp hạng.
 ![Bảng thông tin](src/readme_resources/desc_board.png)
 Sau khi chọn chế độ, sẽ có một bảng hiện ra cho phép bạn tùy chỉnh thiết lập ban đầu. Chọn theo ý muốn của bạn rồi nhấn "Start" để bắt đầu chơi thôi.

@@ -575,8 +575,8 @@ void gameHandler( int players, int gameMode, int mod[4], int &scene, bool &trans
                 thread handleOpponent;
                 if ( startRound )
                 {
-                    processOpponentsControl( Tqueue, queuePosition, player, recentEliminated, survivors );
-                    // handleOpponent = thread(processOpponentsControl, ref(Tqueue), ref(queuePosition), ref(player), ref(recentEliminated), ref(survivors));
+                    // processOpponentsControl( Tqueue, queuePosition, player, recentEliminated, survivors );
+                    handleOpponent = thread(processOpponentsControl, ref(Tqueue), ref(queuePosition), ref(player), ref(recentEliminated), ref(survivors));
                 }
 
                 //Handle quit events
