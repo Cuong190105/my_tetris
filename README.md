@@ -6,6 +6,8 @@ Demo game: [Tại đây](https://youtu.be/zLvHePbUJe4)
 Tải tệp zip trên repo này. Sau đó giải nén và chạy file tetris.exe để mở game.
 ## Cách 2:
 Clone repo này về máy và dùng MinGW-W64 để biên dịch. Chạy Makefile trên CMD tại thư mục chứa makefile để thực hiện việc dịch mã nguồn.
+## Cách 3:
+Nhấn vào đây để đi tới trang tải xuống: ![Trang tải xuống](https://github.com/Cuong190105/my_tetris/releases/tag/release)
 # 1. Màn hình chính
 * Khi bắt đầu vào game, bạn sẽ thấy một màn hình chính như sau:
 ![Màn hình chính](src/readme_resources/home_screen.png)
